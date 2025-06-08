@@ -112,8 +112,18 @@ npm start
 - **requirements.txt:** Gerekli Python paketleri
 
 ## Ekran Görüntüsü
-> Buraya bir ekran görüntüsü ekleyebilirsiniz:
-> ![Ekran Görüntüsü](./screenshot.png)
+![Ekran görüntüsü 2025-06-08 105440](https://github.com/user-attachments/assets/c30db0cc-60bc-4854-92a5-7f10a670ae33)
+Şekil 1: SmartTicket ana arayüzü. Kullanıcılar kalkış ve varış şehirlerini seçerek uçuş sorgusu yapabilir. Seçilen tarihe göre yapay zeka tahminleri entegre şekilde listelenir.
+
+![Ekran görüntüsü 2025-06-08 110027](https://github.com/user-attachments/assets/0db2a133-497d-416c-932d-848f38f8a5bd)
+Şekil 2: Arama sonucunda listelenen uçuş biletleri. Her bilet kartında uçuş bilgileri ve genel risk özeti sunulmaktadır.
+
+![Ekran görüntüsü 2025-06-08 110415](https://github.com/user-attachments/assets/90854376-307d-41b3-8276-38f200c85002)
+Şekil 3: Tahmin detay paneli. İptal ve gecikme olasılıkları, görsel barlar ile kullanıcıya sunulmakta; modelin güven oranı ve açıklamaları ile birlikte gösterilmektedir.
+
+![ChatGPT Image 8 Haz 2025 11_30_45](https://github.com/user-attachments/assets/228a9980-0784-4172-83b3-e29673f68c4f)
+Şekil 4: SmartTicket sistem mimarisi. Kullanıcıdan gelen istekler frontend üzerinden backend’e, oradan da model API’ye yönlendirilmekte; sonuçlar aynı zincirle geri dönmektedir.
+
 
 ## Geliştirme ve Özelleştirme Notları
 - Şehir ve havalimanı verileri backend API'den dinamik olarak çekilmektedir
