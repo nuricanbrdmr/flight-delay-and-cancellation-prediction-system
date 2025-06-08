@@ -124,6 +124,15 @@ npm start
 ![ChatGPT Image 8 Haz 2025 11_30_45](https://github.com/user-attachments/assets/228a9980-0784-4172-83b3-e29673f68c4f)
 Şekil 4: SmartTicket sistem mimarisi. Kullanıcıdan gelen istekler frontend üzerinden backend’e, oradan da model API’ye yönlendirilmekte; sonuçlar aynı zincirle geri dönmektedir.
 
+## 📘 Proje Raporları
+
+### 🇹🇷 Türkçe Rapor
+Bitirme projesine ait detaylı teknik ve metodolojik açıklamaların yer aldığı Türkçe raporu bağlantıdan inceleyebilirsiniz:
+👉 [Rapor (TR)](https://github.com/user-attachments/files/20643533/Bitirme.pdf)
+
+### 🇬🇧 English Report
+The English version of the final project report with technical details and methodology can be accessed from the link below:
+👉 [Report (EN)](https://github.com/user-attachments/files/20643536/Bitirme.EN.pdf)
 
 ## Geliştirme ve Özelleştirme Notları
 - Şehir ve havalimanı verileri backend API'den dinamik olarak çekilmektedir
@@ -136,5 +145,8 @@ npm start
 Katkıda bulunmak isterseniz lütfen bir pull request açın. Lisans bilgisi için projenin sahibine danışınız.
 
 ---
+
+## Poster
+![Poster](https://github.com/user-attachments/assets/e94b1759-be96-4697-8377-a12af1483565)
 
 **Hazırlayanlar:** Nuri Can Birdemir - Eda Nur Mutlu
