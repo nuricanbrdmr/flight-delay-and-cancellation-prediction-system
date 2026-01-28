@@ -68,23 +68,39 @@ X = df.drop(['DELAY_CLASS', 'DEP_DELAY', "DEP_TIME"], axis=1)
 
 # ==================== TEMPORAL VALIDATION: Yıllara Göre Bölme ====================
 # Zamansal sızıntıyı (temporal leakage) önlemek için veriyi yıllara göre bölelim
-# Eğitim: 2016-2022, Test: 2023-2024
 print("\n" + "="*60)
 print("TEMPORAL VALIDATION - ZAMANSAL DOĞRULAMA")
 print("="*60)
 
-train_mask = df['YEAR'] <= 2022
-test_mask = df['YEAR'] >= 2023
+# Önce veri setindeki yılları kontrol et
+available_years = sorted(df['YEAR'].unique())
+print(f"Veri setindeki yıllar: {available_years}")
+
+# Yılların %80'ini eğitim, %20'sini test için kullan
+split_index = max(1, int(len(available_years) * 0.8))  # En az 1 yıl test için
+train_years = available_years[:split_index]
+test_years = available_years[split_index:]
+
+print(f"Eğitim yılları: {train_years}")
+print(f"Test yılları: {test_years}")
+
+# Maskeleri oluştur
+train_mask = df['YEAR'].isin(train_years)
+test_mask = df['YEAR'].isin(test_years)
 
 X_train = X[train_mask]
 X_test = X[test_mask]
 y_train = y[train_mask]
 y_test = y[test_mask]
 
-print(f"Eğitim verisi: {len(X_train)} örnek (2016-2022)")
-print(f"Test verisi: {len(X_test)} örnek (2023-2024)")
-print(f"Eğitim yılları: {df[train_mask]['YEAR'].unique()}")
-print(f"Test yılları: {df[test_mask]['YEAR'].unique()}")
+print(f"Eğitim verisi: {len(X_train)} örnek")
+print(f"Test verisi: {len(X_test)} örnek")
+
+# Test verisinin boş olmadığından emin ol
+if len(X_test) == 0:
+    print("\n⚠️ HATA: Test verisi boş! Klasik train_test_split kullanılacak...")
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    print(f"Yeni eğitim: {len(X_train)}, Test: {len(X_test)}")
 
 # Veri Dengesizliğini Giderme (SMOTE)
 print("\n" + "="*60)
@@ -488,40 +504,48 @@ plt.show()
 
 # 3. ROC Curve (One-vs-Rest)
 all_classes = [0, 1, 2, 3]
-y_test_bin = label_binarize(y_test, classes=all_classes)
-y_score = pipeline.predict_proba(X_test)
 
-plt.figure(figsize=(8,6))
-# Sadece test setinde bulunan ve model tarafından tahmin edilebilen sınıflar için çiz
-for i, cls in enumerate(all_classes):
-    if cls in y_test.unique() and i < y_score.shape[1]:
-        fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
-        roc_auc = auc(fpr, tpr)
-        plt.plot(fpr, tpr, label=f'Sınıf {cls} (AUC = {roc_auc:.2f})')
+# Test setinin boş olmadığını kontrol et
+if len(y_test) > 0:
+    y_test_bin = label_binarize(y_test, classes=all_classes)
+    y_score = pipeline.predict_proba(X_test)
 
-plt.plot([0, 1], [0, 1], 'k--', label='Random')
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.title('ROC Curve (One-vs-Rest)')
-plt.legend()
-plt.tight_layout()
-plt.show()
+    plt.figure(figsize=(8,6))
+    # Sadece test setinde bulunan ve model tarafından tahmin edilebilen sınıflar için çiz
+    for i, cls in enumerate(all_classes):
+        if cls in y_test.unique() and i < y_score.shape[1]:
+            fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+            roc_auc = auc(fpr, tpr)
+            plt.plot(fpr, tpr, label=f'Sınıf {cls} (AUC = {roc_auc:.2f})')
+
+    plt.plot([0, 1], [0, 1], 'k--', label='Random')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve (One-vs-Rest)')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+else:
+    print("⚠️ Test verisi boş, ROC curve çizilemedi!")
 
 # 4. Precision-Recall Curve (One-vs-Rest)
-plt.figure(figsize=(8,6))
-# Sadece test setinde bulunan ve model tarafından tahmin edilebilen sınıflar için çiz
-for i, cls in enumerate(all_classes):
-    if cls in y_test.unique() and i < y_score.shape[1]:
-        precision, recall, _ = precision_recall_curve(y_test_bin[:, i], y_score[:, i])
-        pr_auc = auc(recall, precision)
-        plt.plot(recall, precision, label=f'Sınıf {cls} (AUC = {pr_auc:.2f})')
+if len(y_test) > 0:
+    plt.figure(figsize=(8,6))
+    # Sadece test setinde bulunan ve model tarafından tahmin edilebilen sınıflar için çiz
+    for i, cls in enumerate(all_classes):
+        if cls in y_test.unique() and i < y_score.shape[1]:
+            precision, recall, _ = precision_recall_curve(y_test_bin[:, i], y_score[:, i])
+            pr_auc = auc(recall, precision)
+            plt.plot(recall, precision, label=f'Sınıf {cls} (AUC = {pr_auc:.2f})')
 
-plt.xlabel('Recall')
-plt.ylabel('Precision')
-plt.title('Precision-Recall Curve (One-vs-Rest)')
-plt.legend()
-plt.tight_layout()
-plt.show()
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve (One-vs-Rest)')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+else:
+    print("⚠️ Test verisi boş, Precision-Recall curve çizilemedi!")
 
 # 5. Senaryo Bazlı F1 Bar Plot
 # Senaryo analizini tekrar çalıştırıp F1 skorlarını topluyoruz
