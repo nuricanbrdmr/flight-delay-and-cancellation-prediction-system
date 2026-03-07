@@ -161,17 +161,27 @@ X = df_cancelled.drop(["CANCELLED", "CANCELLATION_CODE_ENCODED", "DEP_TIME"], ax
 
 print(f"\nToplam özellik sayısı: {X.shape[1]}")
 
-# ==================== VERİ BÖLME ====================
+# ==================== TEMPORAL VALIDATION: Yıllara Göre Bölme ====================
 print("\n" + "="*60)
-print("VERİ BÖLME")
+print("TEMPORAL VALIDATION - ZAMANSAL DOĞRULAMA")
 print("="*60)
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y_cancel_code, test_size=0.3, stratify=y_cancel_code, random_state=42
-)
+# YEAR_NORMALIZED'dan gerçek yılı geri hesapla
+df_cancelled['YEAR'] = (df_cancelled['YEAR_NORMALIZED'] * (max_year - min_year)) + min_year
+df_cancelled['YEAR'] = df_cancelled['YEAR'].astype(int)
 
-print(f"Train set: {len(X_train)} örnek")
-print(f"Test set: {len(X_test)} örnek")
+train_mask = df_cancelled['YEAR'] <= 2022
+test_mask = df_cancelled['YEAR'] >= 2023
+
+X_train = X[train_mask]
+X_test = X[test_mask]
+y_train = y_cancel_code[train_mask]
+y_test = y_cancel_code[test_mask]
+
+print(f"Eğitim verisi: {len(X_train)} örnek (2016-2022)")
+print(f"Test verisi: {len(X_test)} örnek (2023-2024)")
+print(f"Eğitim yılları: {sorted(df_cancelled[train_mask]['YEAR'].unique())}")
+print(f"Test yılları: {sorted(df_cancelled[test_mask]['YEAR'].unique())}")
 
 print("\nTrain set sınıf dağılımı:")
 print(y_train.value_counts().sort_index())
@@ -323,16 +333,19 @@ for class_idx in range(5):
             print(f"      • F1-Score: {class_f1:.4f} ({class_f1*100:.2f}%)")
             print(f"      • Test Örnek Sayısı: {class_mask.sum()}")
 
-# ==================== CROSS-VALIDATION ====================
+# ==================== TEMPORAL CROSS-VALIDATION ====================
 print("\n" + "="*60)
-print("CROSS-VALIDATION ANALİZİ")
+print("TEMPORAL CROSS-VALIDATION ANALİZİ")
 print("="*60)
 
-skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+# TimeSeriesSplit - zaman sırasını korur
+from sklearn.model_selection import TimeSeriesSplit
+tscv = TimeSeriesSplit(n_splits=5)
 cv_scores = cross_val_score(model_cancel_code, X_train_resampled, y_train_resampled, 
-                           cv=skf, scoring='accuracy')
+                           cv=tscv, scoring='accuracy')
 
-print(f"5-Fold Cross-Validation Sonuçları:")
+print(f"5-Fold Temporal Cross-Validation Sonuçları:")
+print(f"⚠️ Not: Zamansal sızıntıyı önlemek için TimeSeriesSplit kullanılmıştır.")
 print(f"  • Ortalama Accuracy: {cv_scores.mean():.4f} ({cv_scores.mean()*100:.2f}%)")
 print(f"  • Std Deviation: {cv_scores.std():.4f}")
 print(f"  • Min: {cv_scores.min():.4f} ({cv_scores.min()*100:.2f}%)")

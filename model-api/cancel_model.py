@@ -126,13 +126,33 @@ X = df.drop(["CANCELLED", "CANCELLATION_CODE_ENCODED", "DEP_TIME"], axis=1)
 
 print(f"Toplam özellik sayısı: {X.shape[1]}")
 
-# Verileri bölme
-X_train, X_test, y_cancelled_train, y_cancelled_test = train_test_split(
-    X, y_cancelled, test_size=0.3, stratify=y_cancelled, random_state=42
-)
+# ==================== TEMPORAL VALIDATION: Yıllara Göre Bölme ====================
+# Zamansal sızıntıyı (temporal leakage) önlemek için veriyi yıllara göre bölelim
+# Eğitim: 2016-2022, Test: 2023-2024
+print("\n" + "="*60)
+print("TEMPORAL VALIDATION - ZAMANSAL DOĞRULAMA")
+print("="*60)
 
-y_cancel_code_train = y_cancel_code.iloc[X_train.index]
-y_cancel_code_test = y_cancel_code.iloc[X_test.index]
+# YEAR_NORMALIZED'dan gerçek yılı geri hesapla
+df['YEAR'] = (df['YEAR_NORMALIZED'] * (max_year - min_year)) + min_year
+df['YEAR'] = df['YEAR'].astype(int)
+
+train_mask = df['YEAR'] <= 2022
+test_mask = df['YEAR'] >= 2023
+
+X_train = X[train_mask]
+X_test = X[test_mask]
+y_cancelled_train = y_cancelled[train_mask]
+y_cancelled_test = y_cancelled[test_mask]
+y_cancel_code_train = y_cancel_code[train_mask]
+y_cancel_code_test = y_cancel_code[test_mask]
+
+print(f"Eğitim verisi: {len(X_train)} örnek (2016-2022)")
+print(f"Test verisi: {len(X_test)} örnek (2023-2024)")
+print(f"Eğitim yılları: {sorted(df[train_mask]['YEAR'].unique())}")
+print(f"Test yılları: {sorted(df[test_mask]['YEAR'].unique())}")
+print(f"Eğitim iptal oranı: {y_cancelled_train.mean():.3f}")
+print(f"Test iptal oranı: {y_cancelled_test.mean():.3f}")
 
 # Eksik değerleri doldurma
 imputer = SimpleImputer(strategy='median')
@@ -552,25 +572,27 @@ def model_reliability_analysis(model, X_test, y_test, n_bootstrap=100):
 # Model güvenilirlik analizi
 reliability_results = model_reliability_analysis(model_cancelled, X_test_scaled, y_cancelled_test)
 
-# ==================== CROSS-VALIDATION ANALİZİ ====================
+# ==================== TEMPORAL CROSS-VALIDATION ANALİZİ ====================
 print("\n" + "="*60)
-print("CROSS-VALIDATION STABİLİTE ANALİZİ")
+print("TEMPORAL CROSS-VALIDATION STABİLİTE ANALİZİ")
 print("="*60)
 
-def cross_validation_analysis(model, X, y, cv_folds=5):
-    """Cross-validation ile model stabilitesi analizi"""
+def temporal_cross_validation_analysis(model, X, y, cv_folds=5):
+    """TimeSeriesSplit ile zamansal cross-validation analizi"""
     
-    print(f"🔄 {cv_folds}-Fold Cross-Validation Analizi...")
+    print(f"🔄 {cv_folds}-Fold Temporal Cross-Validation Analizi...")
+    print("⚠️ Not: Zamansal sızıntıyı önlemek için TimeSeriesSplit kullanılmıştır.")
     
-    # Stratified K-Fold
-    skf = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
+    # TimeSeriesSplit - zaman sırasını korur
+    from sklearn.model_selection import TimeSeriesSplit
+    tscv = TimeSeriesSplit(n_splits=cv_folds)
     
     # Farklı metrikler için CV skorları
-    accuracy_scores = cross_val_score(model, X, y, cv=skf, scoring='accuracy')
-    precision_scores = cross_val_score(model, X, y, cv=skf, scoring='precision')
-    recall_scores = cross_val_score(model, X, y, cv=skf, scoring='recall')
-    f1_scores = cross_val_score(model, X, y, cv=skf, scoring='f1')
-    roc_auc_scores = cross_val_score(model, X, y, cv=skf, scoring='roc_auc')
+    accuracy_scores = cross_val_score(model, X, y, cv=tscv, scoring='accuracy')
+    precision_scores = cross_val_score(model, X, y, cv=tscv, scoring='precision')
+    recall_scores = cross_val_score(model, X, y, cv=tscv, scoring='recall')
+    f1_scores = cross_val_score(model, X, y, cv=tscv, scoring='f1')
+    roc_auc_scores = cross_val_score(model, X, y, cv=tscv, scoring='roc_auc')
     
     cv_results = {
         'Accuracy': accuracy_scores,
@@ -580,7 +602,7 @@ def cross_validation_analysis(model, X, y, cv_folds=5):
         'ROC-AUC': roc_auc_scores
     }
     
-    print(f"\n📊 CROSS-VALIDATION SONUÇLARI:")
+    print(f"\n📊 TEMPORAL CROSS-VALIDATION SONUÇLARI:")
     print(f"{'Metrik':<12} {'Ortalama':<10} {'Std':<8} {'Min':<8} {'Max':<8} {'Stabilite'}")
     print("-" * 65)
     
@@ -591,7 +613,7 @@ def cross_validation_analysis(model, X, y, cv_folds=5):
         max_score = np.max(scores)
         
         # Stabilite değerlendirmesi
-        cv_stability = 1 - (std_score / mean_score)
+        cv_stability = 1 - (std_score / mean_score) if mean_score > 0 else 0
         if cv_stability > 0.95:
             stability_level = "🟢 Stabil"
         elif cv_stability > 0.90:
@@ -603,8 +625,8 @@ def cross_validation_analysis(model, X, y, cv_folds=5):
     
     return cv_results
 
-# Cross-validation analizi
-cv_results = cross_validation_analysis(model_cancelled, X_train_resampled, y_cancelled_train_resampled)
+# Temporal cross-validation analizi (sadece eğitim verisi üzerinde)
+cv_results = temporal_cross_validation_analysis(model_cancelled, X_train_resampled, y_cancelled_train_resampled)
 
 # ==================== HATA ANALİZİ VE İYİLEŞTİRME ÖNERİLERİ ====================
 print("\n" + "="*60)

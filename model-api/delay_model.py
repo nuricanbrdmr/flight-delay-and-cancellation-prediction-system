@@ -66,13 +66,54 @@ print(df['DELAY_CLASS'].value_counts(normalize=True))
 y = df['DELAY_CLASS']
 X = df.drop(['DELAY_CLASS', 'DEP_DELAY', "DEP_TIME"], axis=1)
 
-# Verileri bölme
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# ==================== TEMPORAL VALIDATION: Yıllara Göre Bölme ====================
+# Zamansal sızıntıyı (temporal leakage) önlemek için veriyi yıllara göre bölelim
+print("\n" + "="*60)
+print("TEMPORAL VALIDATION - ZAMANSAL DOĞRULAMA")
+print("="*60)
+
+# Önce veri setindeki yılları kontrol et
+available_years = sorted(df['YEAR'].unique())
+print(f"Veri setindeki yıllar: {available_years}")
+
+# Yılların %80'ini eğitim, %20'sini test için kullan
+split_index = max(1, int(len(available_years) * 0.8))  # En az 1 yıl test için
+train_years = available_years[:split_index]
+test_years = available_years[split_index:]
+
+print(f"Eğitim yılları: {train_years}")
+print(f"Test yılları: {test_years}")
+
+# Maskeleri oluştur
+train_mask = df['YEAR'].isin(train_years)
+test_mask = df['YEAR'].isin(test_years)
+
+X_train = X[train_mask]
+X_test = X[test_mask]
+y_train = y[train_mask]
+y_test = y[test_mask]
+
+print(f"Eğitim verisi: {len(X_train)} örnek")
+print(f"Test verisi: {len(X_test)} örnek")
+
+# Test verisinin boş olmadığından emin ol
+if len(X_test) == 0:
+    print("\n⚠️ HATA: Test verisi boş! Klasik train_test_split kullanılacak...")
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    print(f"Yeni eğitim: {len(X_train)}, Test: {len(X_test)}")
 
 # Veri Dengesizliğini Giderme (SMOTE)
-print("Veri SMOTE ile Dengesizlik Gideriliyor...")
+print("\n" + "="*60)
+print("SMOTE İLE VERİ DENGESİZLİĞİ GİDERME")
+print("="*60)
+print("SMOTE öncesi sınıf dağılımı:")
+print(y_train.value_counts().sort_index())
+
 smote = SMOTE(random_state=42, k_neighbors=5)
 X_train, y_train = smote.fit_resample(X_train, y_train)
+
+print("\nSMOTE sonrası sınıf dağılımı:")
+print(pd.Series(y_train).value_counts().sort_index())
 
 df["DELAY_CLASS"].value_counts()
 
@@ -99,15 +140,105 @@ print("\nModel eğitimi başlıyor...")
 pipeline.fit(X_train, y_train)
 print("Model eğitimi tamamlandı!")
 
+# ==================== TEMPORAL CROSS-VALIDATION ANALİZİ ====================
+print("\n" + "="*60)
+print("TEMPORAL CROSS-VALIDATION STABİLİTE ANALİZİ")
+print("="*60)
+
+from sklearn.model_selection import TimeSeriesSplit, cross_val_score
+
+def temporal_cross_validation_analysis_delay(pipeline, X, y, cv_folds=5):
+    """TimeSeriesSplit ile zamansal cross-validation analizi"""
+    
+    print(f"🔄 {cv_folds}-Fold Temporal Cross-Validation Analizi...")
+    print("⚠️ Not: Zamansal sızıntıyı önlemek için TimeSeriesSplit kullanılmıştır.")
+    
+    # TimeSeriesSplit - zaman sırasını korur
+    tscv = TimeSeriesSplit(n_splits=cv_folds)
+    
+    # Farklı metrikler için CV skorları
+    accuracy_scores = cross_val_score(pipeline, X, y, cv=tscv, scoring='accuracy')
+    precision_scores = cross_val_score(pipeline, X, y, cv=tscv, scoring='precision_weighted')
+    recall_scores = cross_val_score(pipeline, X, y, cv=tscv, scoring='recall_weighted')
+    f1_scores = cross_val_score(pipeline, X, y, cv=tscv, scoring='f1_weighted')
+    
+    cv_results = {
+        'Accuracy': accuracy_scores,
+        'Precision': precision_scores,
+        'Recall': recall_scores,
+        'F1': f1_scores
+    }
+    
+    print(f"\n📊 TEMPORAL CROSS-VALIDATION SONUÇLARI:")
+    print(f"{'Metrik':<12} {'Ortalama':<10} {'Std':<8} {'Min':<8} {'Max':<8} {'Stabilite'}")
+    print("-" * 65)
+    
+    for metric_name, scores in cv_results.items():
+        mean_score = np.mean(scores)
+        std_score = np.std(scores)
+        min_score = np.min(scores)
+        max_score = np.max(scores)
+        
+        # Stabilite değerlendirmesi
+        cv_stability = 1 - (std_score / mean_score) if mean_score > 0 else 0
+        if cv_stability > 0.95:
+            stability_level = "🟢 Stabil"
+        elif cv_stability > 0.90:
+            stability_level = "🟡 Orta"
+        else:
+            stability_level = "🔴 Değişken"
+        
+        print(f"{metric_name:<12} {mean_score:<10.4f} {std_score:<8.4f} {min_score:<8.4f} {max_score:<8.4f} {stability_level}")
+    
+    return cv_results
+
+# Temporal cross-validation analizi (sadece eğitim verisi üzerinde)
+cv_results = temporal_cross_validation_analysis_delay(pipeline, X_train, y_train)
+
 # Model performansını değerlendirme
 y_pred = pipeline.predict(X_test)
 
+# Gecikme sınıfları sözlüğü
+delay_classes = {
+    0: "Zamanında veya erken",
+    1: "Hafif gecikme (1-15 dakika)",
+    2: "Orta gecikme (16-30 dakika)",
+    3: "Ciddi gecikme (30+ dakika)"
+}
+
 print("\nModel Performansı:")
+print("\n🔍 Sınıf Dağılımı Analizi:")
+print(f"Test setindeki benzersiz sınıflar: {sorted(y_test.unique())}")
+print(f"Tahmin edilen benzersiz sınıflar: {sorted(np.unique(y_pred))}")
+print(f"\nTest seti sınıf dağılımı:")
+print(y_test.value_counts().sort_index())
+
 print("\nConfusion Matrix:")
-print(confusion_matrix(y_test, y_pred))
+cm = confusion_matrix(y_test, y_pred)
+print(cm)
+
 print("\nClassification Report:")
-print(classification_report(y_test, y_pred))
+# Tüm sınıfları tanımla (test setinde olmasa bile)
+all_labels = [0, 1, 2, 3]
+target_names = [delay_classes[i] for i in all_labels]
+
+# zero_division=0 ile sınıf yoksa 0 değeri kullan
+print(classification_report(
+    y_test, 
+    y_pred, 
+    labels=all_labels,
+    target_names=target_names,
+    zero_division=0
+))
+
 print(f"\nAccuracy Score: {accuracy_score(y_test, y_pred):.4f}")
+
+# Temporal validation uyarısı
+if len(y_test.unique()) < 4:
+    print("\n⚠️ DİKKAT: Temporal validation nedeniyle test setinde (2023-2024) bazı gecikme sınıfları bulunmamaktadır.")
+    print(f"   Test setindeki sınıflar: {sorted(y_test.unique())}")
+    print(f"   Eksik sınıflar: {sorted(set(all_labels) - set(y_test.unique()))}")
+    print("   Bu durum gerçek dünyadaki veri dağılımını yansıtmaktadır.")
 
 # Modeli ve gerekli bileşenleri kaydet
 print("\nModel ve bileşenler kaydediliyor...")
@@ -126,15 +257,18 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 
-# Confusion matrix oluştur
-cm = confusion_matrix(y_test, y_pred)
+# Confusion matrix oluştur (tüm sınıflar için)
+cm_full = confusion_matrix(y_test, y_pred, labels=[0, 1, 2, 3])
 
 # Görselleştir
 plt.figure(figsize=(6, 5))
-sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=[0, 1,2,3], yticklabels=[0, 1,2,3])
+sns.heatmap(cm_full, annot=True, fmt="d", cmap="Blues", 
+            xticklabels=['Zamanında', 'Hafif', 'Orta', 'Ciddi'], 
+            yticklabels=['Zamanında', 'Hafif', 'Orta', 'Ciddi'])
 plt.xlabel("Predicted Label")
 plt.ylabel("True Label")
-plt.title("Confusion Matrix")
+plt.title("Confusion Matrix - Temporal Validation")
+plt.tight_layout()
 plt.show()
 
 # Eğitim ve test doğruluğunu karşılaştırma
@@ -199,9 +333,16 @@ scenario_performance_analysis_delay(X_test, y_test, y_pred, X_test.columns)
 # 3. Hata Analizi (False Positives/Negatives)
 def error_analysis_delay(y_true, y_pred):
     print("\n🔍 HATA ANALİZİ (Çoklu Sınıf):")
-    report = classification_report(y_true, y_pred, output_dict=True)
+    
+    # Tüm sınıfları tanımla
+    all_labels = [0, 1, 2, 3]
+    report = classification_report(y_true, y_pred, labels=all_labels, output_dict=True, zero_division=0)
+    
+    # Sadece test setinde bulunan sınıfları göster
     for cls in sorted(set(y_true)):
-        print(f"Sınıf {cls}: Precision={report[str(cls)]['precision']:.2f}, Recall={report[str(cls)]['recall']:.2f}, F1={report[str(cls)]['f1-score']:.2f}")
+        if str(cls) in report:
+            print(f"Sınıf {cls}: Precision={report[str(cls)]['precision']:.2f}, Recall={report[str(cls)]['recall']:.2f}, F1={report[str(cls)]['f1-score']:.2f}")
+    
     print("\nYanlış sınıflandırılan örneklerin dağılımı:")
     cm = confusion_matrix(y_true, y_pred)
     for i in range(cm.shape[0]):
@@ -220,36 +361,57 @@ print("- Ensemble veya farklı algoritmalar (LightGBM, CatBoost) dene.")
 print("- Gecikme sınıflarını birleştirerek (ör. 0 vs 1-2-3) binary analiz de yapabilirsin.")
 
 # 5. İş Etkisi ve ROI Analizi (örnek)
-def business_impact_analysis_delay(cm):
+def business_impact_analysis_delay(y_true, y_pred):
+    # Tüm sınıflar için confusion matrix oluştur (4x4)
+    cm_full = confusion_matrix(y_true, y_pred, labels=[0, 1, 2, 3])
+    
+    # Kontrol: confusion matrix boyutu
+    if cm_full.shape[0] < 1 or cm_full.shape[1] < 1:
+        print(f"\n⚠️ UYARI: İş etkisi analizi için yeterli veri yok.")
+        return
+    
     # Sınıf 0: zamanında, 1-2-3: gecikmeli
-    on_time = cm[0,0]
-    late_predicted_on_time = cm[1:,0].sum()
-    on_time_predicted_late = cm[0,1:].sum()
-    late_correct = cm[1:,1:].sum() - np.trace(cm[1:,1:])
+    on_time = cm_full[0, 0] if cm_full.shape[0] > 0 else 0
+    late_predicted_on_time = cm_full[1:, 0].sum() if cm_full.shape[0] > 1 else 0
+    on_time_predicted_late = cm_full[0, 1:].sum() if cm_full.shape[1] > 1 else 0
+    
+    # Gecikmeli sınıfların doğru tahminleri
+    if cm_full.shape[0] > 1 and cm_full.shape[1] > 1:
+        late_correct = cm_full[1:, 1:].sum() - np.trace(cm_full[1:, 1:])
+    else:
+        late_correct = 0
+    
     # Varsayımsal maliyetler
     COST_LATE_UNDETECTED = 200
     COST_FALSE_ALARM = 50
     REVENUE_CORRECT_LATE = 100
     REVENUE_ON_TIME = 10
+    
     total_cost = late_predicted_on_time * COST_LATE_UNDETECTED + on_time_predicted_late * COST_FALSE_ALARM
     total_revenue = on_time * REVENUE_ON_TIME + late_correct * REVENUE_CORRECT_LATE
     net_impact = total_revenue - total_cost
+    
     print(f"\n💰 İş Etkisi Analizi:")
     print(f"  - Zamanında doğru tahmin: {on_time} (Gelir: ${on_time*REVENUE_ON_TIME})")
     print(f"  - Gecikmeli doğru tahmin: {late_correct} (Gelir: ${late_correct*REVENUE_CORRECT_LATE})")
     print(f"  - Gecikmeli olup zamanında tahmin edilen: {late_predicted_on_time} (Maliyet: ${late_predicted_on_time*COST_LATE_UNDETECTED})")
     print(f"  - Zamanında olup gecikmeli tahmin edilen: {on_time_predicted_late} (Maliyet: ${on_time_predicted_late*COST_FALSE_ALARM})")
     print(f"  - Net Etki: ${net_impact}")
+    
+    # Temporal validation uyarısı
+    unique_classes = sorted(set(y_true))
+    if len(unique_classes) < 4:
+        print(f"\n  ⚠️ Not: Test setinde tüm sınıflar bulunmamaktadır (Mevcut: {unique_classes})")
+        print(f"      Bu durum temporal validation sonucudur ve gerçek dünya dağılımını yansıtır.")
 
-cm = confusion_matrix(y_test, y_pred)
-business_impact_analysis_delay(cm)
+business_impact_analysis_delay(y_test, y_pred)
 
 # 6. Executive Summary
 print("\n" + "="*60)
 print("EXECUTIVE SUMMARY - YÖNETİCİ ÖZETİ")
 print("="*60)
 print(f"Genel Doğruluk: {accuracy_score(y_test, y_pred):.2%}")
-print(f"Makro F1 Skoru: {f1_score(y_test, y_pred, average='macro'):.3f}")
+print(f"Makro F1 Skoru: {f1_score(y_test, y_pred, average='macro', zero_division=0):.3f}")
 print(f"En önemli özellikler: {', '.join(feature_importance_df.head(3)['feature'])}")
 print(f"Senaryo bazlı analizde en güçlü olduğu alanlar: (ör. Yaz, Kötü Hava, Uzun Mesafe)")
 print(f"Yanlış tahminlerin etkisi: Gecikmeli uçuşları zamanında tahmin etmek müşteri memnuniyetsizliğine ve tazminat maliyetine yol açar. Zamanında uçuşları gecikmeli tahmin etmek ise gereksiz alarm ve operasyonel karmaşa yaratır.")
@@ -301,15 +463,7 @@ new_data = new_data[X_train.columns]
 prediction = pipeline.predict(new_data)
 prediction_proba = pipeline.predict_proba(new_data)
 
-# Gecikme sınıfları sözlüğü
-delay_classes = {
-    0: "Zamanında veya erken",
-    1: "Hafif gecikme (1-15 dakika)",
-    2: "Orta gecikme (16-30 dakika)",
-    3: "Ciddi gecikme (30+ dakika)"
-}
-
-# Tahmin sonuçlarını yazdırma
+# Tahmin sonuçlarını yazdırma (delay_classes zaten yukarıda tanımlandı)
 print("\nTahmin Sonucu:")
 print(f"Tahmin edilen sınıf: {delay_classes[prediction[0]]}")
 print("\nSınıf olasılıkları:")
@@ -337,9 +491,11 @@ plt.tight_layout()
 plt.show()
 
 # 2. Confusion Matrix
-cm = confusion_matrix(y_test, y_pred)
+cm_viz = confusion_matrix(y_test, y_pred, labels=[0, 1, 2, 3])
 plt.figure(figsize=(6, 5))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=[0,1,2,3], yticklabels=[0,1,2,3])
+sns.heatmap(cm_viz, annot=True, fmt='d', cmap='Blues', 
+            xticklabels=['Zamanında', 'Hafif', 'Orta', 'Ciddi'], 
+            yticklabels=['Zamanında', 'Hafif', 'Orta', 'Ciddi'])
 plt.xlabel('Tahmin')
 plt.ylabel('Gerçek')
 plt.title('Confusion Matrix')
@@ -347,34 +503,49 @@ plt.tight_layout()
 plt.show()
 
 # 3. ROC Curve (One-vs-Rest)
-n_classes = len(np.unique(y_test))
-y_test_bin = label_binarize(y_test, classes=[0,1,2,3])
-y_score = pipeline.predict_proba(X_test)
-plt.figure(figsize=(8,6))
-for i in range(n_classes):
-    fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
-    roc_auc = auc(fpr, tpr)
-    plt.plot(fpr, tpr, label=f'Sınıf {i} (AUC = {roc_auc:.2f})')
-plt.plot([0, 1], [0, 1], 'k--', label='Random')
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.title('ROC Curve (One-vs-Rest)')
-plt.legend()
-plt.tight_layout()
-plt.show()
+all_classes = [0, 1, 2, 3]
+
+# Test setinin boş olmadığını kontrol et
+if len(y_test) > 0:
+    y_test_bin = label_binarize(y_test, classes=all_classes)
+    y_score = pipeline.predict_proba(X_test)
+
+    plt.figure(figsize=(8,6))
+    # Sadece test setinde bulunan ve model tarafından tahmin edilebilen sınıflar için çiz
+    for i, cls in enumerate(all_classes):
+        if cls in y_test.unique() and i < y_score.shape[1]:
+            fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+            roc_auc = auc(fpr, tpr)
+            plt.plot(fpr, tpr, label=f'Sınıf {cls} (AUC = {roc_auc:.2f})')
+
+    plt.plot([0, 1], [0, 1], 'k--', label='Random')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve (One-vs-Rest)')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+else:
+    print("⚠️ Test verisi boş, ROC curve çizilemedi!")
 
 # 4. Precision-Recall Curve (One-vs-Rest)
-plt.figure(figsize=(8,6))
-for i in range(n_classes):
-    precision, recall, _ = precision_recall_curve(y_test_bin[:, i], y_score[:, i])
-    pr_auc = auc(recall, precision)
-    plt.plot(recall, precision, label=f'Sınıf {i} (AUC = {pr_auc:.2f})')
-plt.xlabel('Recall')
-plt.ylabel('Precision')
-plt.title('Precision-Recall Curve (One-vs-Rest)')
-plt.legend()
-plt.tight_layout()
-plt.show()
+if len(y_test) > 0:
+    plt.figure(figsize=(8,6))
+    # Sadece test setinde bulunan ve model tarafından tahmin edilebilen sınıflar için çiz
+    for i, cls in enumerate(all_classes):
+        if cls in y_test.unique() and i < y_score.shape[1]:
+            precision, recall, _ = precision_recall_curve(y_test_bin[:, i], y_score[:, i])
+            pr_auc = auc(recall, precision)
+            plt.plot(recall, precision, label=f'Sınıf {cls} (AUC = {pr_auc:.2f})')
+
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall Curve (One-vs-Rest)')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+else:
+    print("⚠️ Test verisi boş, Precision-Recall curve çizilemedi!")
 
 # 5. Senaryo Bazlı F1 Bar Plot
 # Senaryo analizini tekrar çalıştırıp F1 skorlarını topluyoruz
