@@ -1,4 +1,4 @@
-# LEGACY (kept for the record): superseded by model-api/revision/. This version contains known problems that the revision removes
+# LEGACY (kept for the record): superseded by model-api/training/. This version contains known problems that the revision removes
 # (target-based features computed on all data, SMOTE before temporal CV, test-set threshold selection, delay classes built from standardised minutes).
 import numpy as np
 import pandas as pd

@@ -1,4 +1,4 @@
-# Experiments of the revision (model-api/revision)
+# Experiments of the revision (model-api/training)
 numpy
 pandas
 scikit-learn

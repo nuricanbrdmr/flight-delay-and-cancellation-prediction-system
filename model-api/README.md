@@ -3,10 +3,11 @@
 | Path | Purpose |
 |---|---|
 | `cancel_delay_api.py` | SmartTicket model API v2 (Flask). Serves the validated Mode-A models. |
-| `models_v2/` | Exported models (`*.ubj`), `config.json`, history lookup tables, weather-station map. Created by `revision/20_export_api_artifacts.py`. |
+| `models_v2/` | Exported models (`*.ubj`), `config.json`, history lookup tables, weather-station map. Created by `training/20_export_api_artifacts.py`. |
 | `tests/` | `python -m unittest discover -s tests -v` (feature parity with training, schema, validation, no post-hoc adjustment); `benchmark_latency.py` measures response times. |
-| `revision/` | Reproducible experiments for the manuscript revision (data rebuild, features, models, test report, tables). See `revision/OZET.md`. |
-| `cancel_model.py`, `cancel_code_model.py`, `delay_model.py`, `models/` | LEGACY training code and models, superseded by `revision/` (kept for the record; do not use). |
+| `training/` | Reproducible pipeline (data rebuild, features, models, test report, tables, manuscript build). Needs the git-ignored `csv/` data folder. |
+| `docs/` | `OZET.md` (full summary, open tasks), `HAKEM_YANIT_TASLAGI.md` (reviewer reply draft), `PAPER_TABLES.md` (generated tables). |
+| `legacy/` | Old training scripts and models (`cancel_model.py`, `cancel_code_model.py`, `delay_model.py`, `models/`), superseded by `training/`; kept for the record, do not use. |
 
 ## Run the API
 ```

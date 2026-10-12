@@ -1,6 +1,6 @@
 """SmartTicket model API, version 2 (revision).
 
-Serves the models validated in model-api/revision (chronological protocol, no resampling, no post-hoc probability adjustments):
+Serves the models validated in model-api/training (chronological protocol, no resampling, no post-hoc probability adjustments):
   * cancellation probability               (binary XGBoost)
   * cancellation cause A/B/C, conditional on a cancellation  (XGBoost)
   * departure-delay class probabilities    (four classes, XGBoost without class weights)
