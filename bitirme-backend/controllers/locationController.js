@@ -7,7 +7,7 @@ const getCountries = async (req, res) => {
     method: "GET",
     url: "https://country-state-city-search-rest-api.p.rapidapi.com/allcountries",
     headers: {
-      "x-rapidapi-key": "3903953dacmsh58357f92fd8eea2p14c8e9jsn7e1dcb0762ff",
+      "x-rapidapi-key": process.env.RAPIDAPI_KEY,
       "x-rapidapi-host": "country-state-city-search-rest-api.p.rapidapi.com",
     },
   };
@@ -67,7 +67,7 @@ const getAirports = async (req, res) => {
       placeTypes: "AIRPORT",
     },
     headers: {
-      "x-rapidapi-key": "3903953dacmsh58357f92fd8eea2p14c8e9jsn7e1dcb0762ff",
+      "x-rapidapi-key": process.env.RAPIDAPI_KEY,
       "x-rapidapi-host": "flights-sky.p.rapidapi.com",
     },
   };
@@ -86,7 +86,7 @@ const getCityPhotos = async (req, res) => {
   const unsplashApi = axios.create({
     baseURL: "https://api.unsplash.com",
     headers: {
-      Authorization: `Client-ID -MMoulQO5QKx3MBUSB4mYaP_nhFTQin-94iCTa42vd4`,
+      Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`,
     },
   });
 
@@ -113,7 +113,7 @@ const getAirportByCode = async (req, res) => {
     method: 'GET',
     url: `https://iata-airports.p.rapidapi.com/airports/${code}/`,
     headers: {
-      'x-rapidapi-key': 'f4d5799d0bmshdbe53ab59a8ba64p1eb72ajsn4867d8474185',
+      'x-rapidapi-key': process.env.RAPIDAPI_KEY,
       'x-rapidapi-host': 'iata-airports.p.rapidapi.com'
     }
   };

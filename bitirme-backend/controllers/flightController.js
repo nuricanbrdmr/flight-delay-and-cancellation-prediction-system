@@ -17,7 +17,7 @@ const getOneWay = async (req, res) => {
       adults: adults,
     },
     headers: {
-      "x-rapidapi-key": "3903953dacmsh58357f92fd8eea2p14c8e9jsn7e1dcb0762ff",
+      "x-rapidapi-key": process.env.RAPIDAPI_KEY,
       "x-rapidapi-host": "flights-sky.p.rapidapi.com",
     },
   };
@@ -44,7 +44,7 @@ const getOneWay7DaysMinPrice = async (req, res) => {
       currency_code: 'USD'
     },
     headers: {
-      'x-rapidapi-key': 'c2839ce5camsh1b729118ea46005p148515jsn212dcfba394f',
+      'x-rapidapi-key': process.env.RAPIDAPI_KEY,
       'x-rapidapi-host': 'booking-com15.p.rapidapi.com'
     },
   };
