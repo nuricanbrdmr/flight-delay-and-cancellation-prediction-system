@@ -291,6 +291,13 @@ def get_airports():
     return jsonify({"airports": load_artifacts()["cfg"]["cats"]["ORIGIN"]})
 
 
+@app.route("/cities", methods=["GET"])
+def get_cities():
+    known = airports()
+    names = {known[c]["city"] for c in load_artifacts()["cfg"]["cats"]["ORIGIN"] if c in known and known[c].get("city")}
+    return jsonify({"cities": sorted(names)})
+
+
 @app.route("/model-info", methods=["GET"])
 def model_info():
     cfg = load_artifacts()["cfg"]
