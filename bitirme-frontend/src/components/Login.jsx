@@ -42,10 +42,10 @@ const Login = () => {
         accessToken,
       });
       form.resetFields();
-      message.success("Giriş başarılı.");
+      message.success("Login successful.");
       navigate(from, { replace: true });
     } catch (err) {
-      setErrMsg("Giriş Başarısız");
+      setErrMsg("Login failed");
     }
   };
 
@@ -58,7 +58,7 @@ const Login = () => {
         style={{ width: "400px", padding: "32px" }}
       >
         <div style={{ textAlign: "center" }}>
-          <Title level={2}>Giriş Yap</Title>
+          <Title level={2}>Log In</Title>
         </div>
 
         {errMsg && (
@@ -82,7 +82,7 @@ const Login = () => {
             rules={[
               {
                 required: true,
-                message: "Lütfen email bilginizi girin!",
+                message: "Please enter your email!",
               },
             ]}
           >
@@ -94,40 +94,40 @@ const Login = () => {
             rules={[
               {
                 required: true,
-                message: "Lütfen şifrenizi girin!",
+                message: "Please enter your password!",
               },
             ]}
           >
             <Input.Password
               prefix={<LockOutlined />}
-              placeholder="Şifre"
+              placeholder="Password"
               size="large"
             />
           </Form.Item>
 
           <Form.Item name="persist" valuePropName="checked" className="!mb-4">
             <Checkbox onChange={() => setPersist((prev) => !prev)}>
-              Oturumu Açık Tut
+              Keep me signed in
             </Checkbox>
           </Form.Item>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" block>
-              GİRİŞ YAP
+              LOG IN
             </Button>
           </Form.Item>
 
           <div className="text-center mb-3">
             <Link className="text-blue-500" to="/resetPassword?token=">
-              Şifremi Unuttum
+              Forgot password
             </Link>
           </div>
 
           <div style={{ textAlign: "center" }}>
             <p>
-              Hesabınız yok mu?{" "}
+              Don't have an account?{" "}
               <Link className="text-blue-500" to="/register">
-                Kayıt Ol
+                Sign Up
               </Link>
             </p>
           </div>

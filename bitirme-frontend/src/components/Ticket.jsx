@@ -7,13 +7,13 @@ import { BsStars } from "react-icons/bs";
 
 // Class ids returned by the model API (model-api/cancel_delay_api.py) -> labels shown to the user
 const DELAY_LABELS = {
-  on_time_or_early: "Zamanında veya erken",
-  delay_1_15: "Hafif gecikme (1-15 dk)",
-  delay_16_30: "Orta gecikme (16-30 dk)",
-  delay_over_30: "Ciddi gecikme (30+ dk)",
+  on_time_or_early: "On time or early",
+  delay_1_15: "Slight delay (1-15 min)",
+  delay_16_30: "Moderate delay (16-30 min)",
+  delay_over_30: "Serious delay (30+ min)",
 };
 const DELAY_COLORS = { on_time_or_early: "green", delay_1_15: "processing", delay_16_30: "warning", delay_over_30: "error" };
-const CAUSE_LABELS = { A: "Havayolu / taşıyıcı", B: "Hava durumu", C: "Ulusal hava sistemi" };
+const CAUSE_LABELS = { A: "Carrier", B: "Weather", C: "National air system" };
 
 const Ticket = ({
   logo,
@@ -82,26 +82,26 @@ const Ticket = ({
                 {pred.cancel_alert ? (
                   <Tag color="error" className="flex items-center gap-2 py-0.5">
                     <AiOutlineWarning className="text-lg" />
-                    İptal riski yüksek (%{pct(pred.cancelled_probability.cancelled)})
+                    High cancellation risk ({pct(pred.cancelled_probability.cancelled)}%)
                   </Tag>
                 ) : (
                   <Tag color="success" className="flex items-center gap-2 py-0.5">
-                    İptal riski düşük (%{pct(pred.cancelled_probability.cancelled)})
+                    Low cancellation risk ({pct(pred.cancelled_probability.cancelled)}%)
                   </Tag>
                 )}
                 <Tag color={DELAY_COLORS[delayClass] || "default"} className="flex items-center gap-2 py-0.5">
                   {delayIcon()}
                   {DELAY_LABELS[delayClass]}
                 </Tag>
-                <Tooltip title="Genel iptal oranına kıyasla, bu uçuş için modelin hesapladığı iptal olasılığı">
+                <Tooltip title="Model cancellation probability for this flight relative to the average cancellation rate">
                   <Tag color="blue" className="flex items-center gap-2 py-0.5">
                     <AiOutlineRobot className="text-lg" />
-                    {pred.relative_risk.toFixed(1)}x göreli iptal riski
+                    {pred.relative_risk.toFixed(1)}x relative cancellation risk
                   </Tag>
                 </Tooltip>
               </>
             ) : (
-              <Tag className="py-0.5">Risk tahmini alınamadı</Tag>
+              <Tag className="py-0.5">Risk estimate unavailable</Tag>
             )}
             {pred && (
               <Tag
@@ -110,7 +110,7 @@ const Ticket = ({
                 onClick={() => setIsCollapseOpen(!isCollapseOpen)}
               >
                 <BsStars className="text-lg" />
-                <span>FCDP-SFTS AI Model Tahmin Detayları</span>
+                <span>FCDP-SFTS AI Model Forecast Details</span>
               </Tag>
             )}
           </div>
@@ -139,10 +139,10 @@ const Ticket = ({
               <div>
                 <h2 className="text-xl text-center font-bold mb-2">
                   <span className="bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 bg-clip-text text-transparent">
-                    FCDP-SFTS AI Model Tahmin Detayları
+                    FCDP-SFTS AI Model Forecast Details
                   </span>
                 </h2>
-                <h3 className="font-semibold mb-2">İptal olasılığı</h3>
+                <h3 className="font-semibold mb-2">Cancellation probability</h3>
                 <div className="flex items-center gap-4">
                   <Progress
                     type="circle"
@@ -152,20 +152,20 @@ const Ticket = ({
                   />
                   <div>
                     <p className="text-sm text-gray-600">
-                      İptal olasılığı: <span className="font-bold">%{pct(pred.cancelled_probability.cancelled)}</span>
+                      Cancellation probability: <span className="font-bold">{pct(pred.cancelled_probability.cancelled)}%</span>
                     </p>
                     <p className="text-sm text-gray-600">
-                      Tüm uçuşlardaki ortalama iptal oranı (eğitim dönemi): <span className="font-bold">%{pct(pred.base_rate)}</span>
+                      Average cancellation rate (training period): <span className="font-bold">{pct(pred.base_rate)}%</span>
                     </p>
                     <p className="text-sm text-gray-600">
-                      Uyarı eşiği (doğrulama döneminde seçildi): <span className="font-bold">%{pct(pred.alert_threshold)}</span>
+                      Alert threshold (chosen on the validation period): <span className="font-bold">{pct(pred.alert_threshold)}%</span>
                     </p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="font-semibold mb-2">Kalkış gecikmesi (olasılık dağılımı)</h3>
+                <h3 className="font-semibold mb-2">Departure delay (probability distribution)</h3>
                 <div className="space-y-2">
                   {Object.entries(pred.delay.delay_probabilities).map(([key, value]) => (
                     <div key={key} className="flex items-center gap-2">
@@ -179,30 +179,30 @@ const Ticket = ({
                     </div>
                   ))}
                   <p className="text-sm text-gray-600">
-                    15 dakikadan fazla gecikme olasılığı: <span className="font-bold">%{pct(pred.delay.probability_delay_over_15_min)}</span>
+                    Probability of a delay over 15 minutes: <span className="font-bold">{pct(pred.delay.probability_delay_over_15_min)}%</span>
                   </p>
                 </div>
               </div>
 
               <div>
-                <h3 className="font-semibold mb-2">İptal edilirse olası neden</h3>
+                <h3 className="font-semibold mb-2">Likely cause if cancelled</h3>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(pred.cancellation_cause_if_cancelled).map(([key, value]) => (
                     <Tag key={key} color="blue">
-                      {CAUSE_LABELS[key]}: %{pct(value)}
+                      {CAUSE_LABELS[key]}: {pct(value)}%
                     </Tag>
                   ))}
                 </div>
               </div>
 
               <div>
-                <h3 className="font-semibold mb-2">Kullanılan veriler</h3>
+                <h3 className="font-semibold mb-2">Data used</h3>
                 <div className="flex flex-wrap gap-2">
                   <Tag color={inputs?.weather_available ? "green" : "orange"}>
-                    {inputs?.weather_available ? "Önceki günün gözlenen hava verisi kullanıldı" : "Hava verisi yok"}
+                    {inputs?.weather_available ? "Observed weather of the previous day used" : "No weather data"}
                   </Tag>
                   <Tag color={inputs?.history_available ? "green" : "orange"}>
-                    {inputs?.history_available ? "Son günlerin iptal/gecikme oranları kullanıldı" : "Güncel operasyon geçmişi yok (ortalama değerler)"}
+                    {inputs?.history_available ? "Recent cancellation/delay rates used" : "No recent operational history (average values used)"}
                   </Tag>
                 </div>
                 {warnings.map((w, i) => (
@@ -213,11 +213,11 @@ const Ticket = ({
               <Alert
                 type="info"
                 showIcon
-                message="Bu bir hava tahmini veya garanti değildir"
+                message="This is not a weather forecast or a guarantee"
                 description={
                   info
-                    ? `Model, önceki günün gözlemlerine ve geçmiş oranlara dayalı bir risk göstergesidir. ${info.evaluation_period} döneminde test edilmiş iptal ROC-AUC değeri ${info.cancel_test_roc_auc.toFixed(2)}, gecikme sınıfı doğruluğu %${pct(info.delay_test_accuracy)} (her uçuşa "zamanında" demenin doğruluğu %${pct(info.delay_majority_baseline)}). Olasılıklara ek bir düzeltme uygulanmamıştır.`
-                    : "Model, önceki günün gözlemlerine ve geçmiş oranlara dayalı bir risk göstergesidir."
+                    ? `The model is a risk indicator based on observations of the previous day and historical rates. Tested on ${info.evaluation_period}: cancellation ROC-AUC ${info.cancel_test_roc_auc.toFixed(2)}, delay-class accuracy ${pct(info.delay_test_accuracy)}% (always predicting "on time" gives ${pct(info.delay_majority_baseline)}%). No additional adjustment is applied to the probabilities.`
+                    : "The model is a risk indicator based on observations of the previous day and historical rates."
                 }
               />
             </motion.div>

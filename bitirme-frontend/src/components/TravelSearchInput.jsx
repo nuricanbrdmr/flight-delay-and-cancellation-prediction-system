@@ -82,7 +82,7 @@ const TravelSearchInput = ({
       setOpen(true);
       setSelectionStep("city");
     } catch (error) {
-      console.error("Şehirler getirilirken hata oluştu:", error);
+      console.error("Error fetching cities:", error);
       setLoading(false);
     }
   };
@@ -107,7 +107,7 @@ const TravelSearchInput = ({
       setOpen(true);
       setSelectionStep("airport");
     } catch (error) {
-      console.error("Havalimanları getirilirken hata oluştu:", error);
+      console.error("Error fetching airports:", error);
       setLoading(false);
     }
   };

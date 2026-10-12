@@ -25,7 +25,7 @@ const ResetPassword = () => {
       });
       setSuccessMsg(response.data.message);
     } catch (error) {
-      setErrMsg("Şifre sıfırlama başarısız!");
+      setErrMsg("Password reset failed!");
     }
   };
 
@@ -37,14 +37,14 @@ const ResetPassword = () => {
       });
       setSuccessMsg(response.data.message);
     } catch (error) {
-      setErrMsg("Şifre sıfırlama başarısız!");
+      setErrMsg("Password reset failed!");
     }
   };
 
   // Şifre eşleşme kontrolü
   const SifreEslestirme = (_, value) => {
     if (!value) {
-      return Promise.reject("Lütfen şifrenizi girin");
+      return Promise.reject("Please enter your password");
     }
     if (!SIFRE_REGEX.test(value)) {
       return Promise.reject(<SifreDogrulama />);
@@ -55,7 +55,7 @@ const ResetPassword = () => {
   const EpostaKontrolu = (_, value) => {
     const emailRegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!value || !emailRegExp.test(value)) {
-      return Promise.reject("Geçerli bir e-posta adresi girin.");
+      return Promise.reject("Enter a valid email address.");
     }
     return Promise.resolve();
   };
@@ -70,7 +70,7 @@ const ResetPassword = () => {
       >
         <div style={{ textAlign: "center" }}>
           <Title level={2}>
-            {token ? "Yeni Şifre Belirle" : "Şifremi Unuttum"}
+            {token ? "Set New Password" : "Forgot Password"}
           </Title>
         </div>
 
@@ -110,7 +110,7 @@ const ResetPassword = () => {
             <>
               <Form.Item
                 name="password"
-                label="Şifre"
+                label="Password"
                 tooltip={{
                   title: <SifreDogrulama />,
                   icon: <InfoCircleOutlined />,
@@ -119,29 +119,29 @@ const ResetPassword = () => {
               >
                 <Input.Password
                   prefix={<LockOutlined />}
-                  placeholder="Uygun Şifre Girin.."
+                  placeholder="Enter a suitable password.."
                 />
               </Form.Item>
 
               <Form.Item
                 name="confirm"
-                label="Şifre Tekrar"
+                label="Confirm Password"
                 dependencies={["password"]}
                 rules={[
-                  { required: true, message: "Lütfen şifrenizi tekrar girin" },
+                  { required: true, message: "Please enter your password again" },
                   ({ getFieldValue }) => ({
                     validator(_, value) {
                       if (!value || getFieldValue("password") === value) {
                         return Promise.resolve();
                       }
-                      return Promise.reject("Şifreler eşleşmiyor");
+                      return Promise.reject("Passwords do not match");
                     },
                   }),
                 ]}
               >
                 <Input.Password
                   prefix={<LockOutlined />}
-                  placeholder="Şifre Doğrulama.."
+                  placeholder="Confirm password.."
                 />
               </Form.Item>
             </>
@@ -149,7 +149,7 @@ const ResetPassword = () => {
 
           <Form.Item>
             <Button type="primary" htmlType="submit" block>
-              {token ? "ŞİFREYİ SIFIRLA" : "GÖNDER"}
+              {token ? "RESET PASSWORD" : "SEND"}
             </Button>
           </Form.Item>
         </Form>

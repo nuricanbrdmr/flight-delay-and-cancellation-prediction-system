@@ -179,13 +179,13 @@ const TicketDetails = () => {
         <OtherTicketDays flightData7DaysMinPrice={flightData7DaysMinPrice} handleOtherTicketSearch={handleOtherTicketSearch} />
         <div className="w-full flex flex-col items-center gap-2 pt-6">
           <div className="grid px-3 grid-cols-5 max-sm:grid-cols-2 max-md:grid-cols-3 gap-2 justify-center">
-            <Button>Önerilen</Button>
-            <Button>Ücrete Göre Artan</Button>
-            <Button>Uçuş Süresi</Button>
+            <Button>Recommended</Button>
+            <Button>Price: low to high</Button>
+            <Button>Flight duration</Button>
             <Dropdown menu={menuProps}>
               <Button>
                 <Space>
-                  Direkt/Aktarmalı
+                  Direct/Connecting
                   <DownOutlined />
                 </Space>
               </Button>
@@ -193,7 +193,7 @@ const TicketDetails = () => {
             <Dropdown menu={menuProps}>
               <Button>
                 <Space>
-                  Havayolu Firması
+                  Airline
                   <DownOutlined />
                 </Space>
               </Button>

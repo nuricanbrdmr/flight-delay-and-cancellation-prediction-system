@@ -130,10 +130,10 @@ const sendResetMail = async (req, res) => {
     });
 
     await User.findOneAndUpdate({ email: email }, { verifytoken: token });
-    return res.status(200).json({ message: "Mail başarıyla gönderildi." });
+    return res.status(200).json({ message: "Email sent successfully." });
   } else {
     console.log("User does not exist: ");
-    return res.status(400).json({ message: "Mail gönderilemedi." });
+    return res.status(400).json({ message: "Email could not be sent." });
   }
 };
 
@@ -148,11 +148,11 @@ const resetPassword = async (req, res) => {
       { verifytoken: token },
       { password: hashedPassword }
     );
-    return res.status(200).json({ message: "Şifre başarıyla değiştirildi." });
+    return res.status(200).json({ message: "Password changed successfully." });
   } catch (error) {
     return res
       .status(400)
-      .json({ message: "Şifre değiştirme işlemi başarısız oldu." });
+      .json({ message: "Password change failed." });
   }
 };
 

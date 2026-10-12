@@ -100,7 +100,7 @@ const getCityPhotos = async (req, res) => {
     return res.status(200).json({ data: response.data.results });
   } catch (error) {
     console.error(
-      `${cityName} şehri için fotoğraflar getirilirken hata oluştu:`,
+      `${cityName} - error while fetching photos:`,
       error
     );
     return res.status(400).json({ message: "getCityPhotos not found." });

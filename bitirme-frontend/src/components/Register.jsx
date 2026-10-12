@@ -19,9 +19,9 @@ export const SIFRE_REGEX =
 // Tooltip mesajları için özel bileşen
 export const SifreDogrulama = () => (
   <div>
-    <p>• Şifre 8-24 karakter uzunluğunda olmalı</p>
-    <p>• En az bir büyük ve küçük harf olmalı</p>
-    <p>• En az bir rakam ve bir özel karakter (!@#$%) içermelidir</p>
+    <p>• Password must be 8-24 characters long</p>
+    <p>• Must contain at least one uppercase and one lowercase letter</p>
+    <p>• Must contain at least one digit and one special character (!@#$%)</p>
   </div>
 );
 
@@ -38,10 +38,10 @@ const Register = () => {
         password: values.password,
       });
       setBasarili(true);
-      message.success("Kayıt başarılı!");
+      message.success("Registration successful!");
       form.resetFields();
     } catch (err) {
-      message.error("Kayıt başarısız");
+      message.error("Registration failed");
       setYukleniyor(false);
     }
   };
@@ -49,7 +49,7 @@ const Register = () => {
   // Şifre eşleşme kontrolü
   const SifreEslestirme = (_, value) => {
     if (!value) {
-      return Promise.reject("Lütfen şifrenizi girin");
+      return Promise.reject("Please enter your password");
     }
     if (!SIFRE_REGEX.test(value)) {
       return Promise.reject(<SifreDogrulama />);
@@ -60,7 +60,7 @@ const Register = () => {
   const EpostaKontrolu = (_, value) => {
     const emailRegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!value || !emailRegExp.test(value)) {
-      return Promise.reject("Geçerli bir e-posta adresi girin.");
+      return Promise.reject("Enter a valid email address.");
     }
     return Promise.resolve();
   };
@@ -74,9 +74,9 @@ const Register = () => {
           className="success-container"
         >
           <CheckCircleOutlined style={{ fontSize: 48, color: "#52c41a" }} />
-          <Title level={2}>Kayıt Başarılı!</Title>
+          <Title level={2}>Registration Successful!</Title>
           <Link href="/login" strong>
-            Giriş Yap
+            Log In
           </Link>
         </Space>
       </div>
@@ -90,7 +90,7 @@ const Register = () => {
         className="bg-white shadow-lg"
         style={{ width: "100%", maxWidth: 400, margin: "0 auto", padding: 24 }}
       >
-        <Title level={2}>Kayıt Ol</Title>
+        <Title level={2}>Sign Up</Title>
 
         <Form
           form={form}
@@ -103,20 +103,20 @@ const Register = () => {
             name="email"
             label="Email"
             tooltip={{
-              title: "Lütfen geçerli bir e-posta adresi girin.",
+              title: "Please enter a valid email address.",
               icon: <InfoCircleOutlined />,
             }}
             rules={[{ validator: EpostaKontrolu }]}
           >
             <Input
               prefix={<MailOutlined />}
-              placeholder="Uygun Email Adresi Girin.."
+              placeholder="Enter a valid email address.."
             />
           </Form.Item>
 
           <Form.Item
             name="password"
-            label="Şifre"
+            label="Password"
             tooltip={{
               title: <SifreDogrulama />,
               icon: <InfoCircleOutlined />,
@@ -125,40 +125,40 @@ const Register = () => {
           >
             <Input.Password
               prefix={<LockOutlined />}
-              placeholder="Uygun Şifre Girin.."
+              placeholder="Enter a suitable password.."
             />
           </Form.Item>
 
           <Form.Item
             name="confirm"
-            label="Şifre Tekrar"
+            label="Confirm Password"
             dependencies={["password"]}
             rules={[
-              { required: true, message: "Lütfen şifrenizi tekrar girin" },
+              { required: true, message: "Please enter your password again" },
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue("password") === value) {
                     return Promise.resolve();
                   }
-                  return Promise.reject("Şifreler eşleşmiyor");
+                  return Promise.reject("Passwords do not match");
                 },
               }),
             ]}
           >
             <Input.Password
               prefix={<LockOutlined />}
-              placeholder="Şifre Doğrulama.."
+              placeholder="Confirm password.."
             />
           </Form.Item>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={yukleniyor} block>
-              Kayıt Ol
+              Sign Up
             </Button>
           </Form.Item>
 
           <Text>
-            Zaten hesabınız var mı? <Link href="/">Giriş Yap</Link>
+            Already have an account? <Link href="/">Log In</Link>
           </Text>
         </Form>
       </Space>
