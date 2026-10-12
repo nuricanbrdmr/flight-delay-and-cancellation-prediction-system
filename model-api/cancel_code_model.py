@@ -1,3 +1,5 @@
+# LEGACY (kept for the record): superseded by model-api/revision/. This version contains known problems that the revision removes
+# (target-based features computed on all data, SMOTE before temporal CV, test-set threshold selection, delay classes built from standardised minutes).
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold

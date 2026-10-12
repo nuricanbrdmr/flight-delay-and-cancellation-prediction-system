@@ -1,0 +1,5 @@
+feature_set,n_features,best_iter,pr_auc,roc_auc
+C_full (B+holiday+dest weather),44,6,0.20739151944962572,0.8035698946657901
+"G_full+live (day-of-departure, T-3h)",56,51,0.28255260466605014,0.86213794669908
+H_full+live_no_weather,44,53,0.28197304148152136,0.861962509028477
+I_cal+sched+live_only,26,43,0.23810177529318377,0.8381830621745593

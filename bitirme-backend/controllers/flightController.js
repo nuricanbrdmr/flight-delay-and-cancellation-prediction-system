@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const MODEL_API_URL = "http://localhost:5050";
+const MODEL_API_URL = process.env.MODEL_API_URL || "http://localhost:5050";
 
 const getOneWay = async (req, res) => {
   const { from, to, date, adults, children, infants, cabinClass } = req.query;
@@ -63,33 +63,29 @@ const predictFlight = async (req, res) => {
     const {
       date,
       airline,
-      origin,
-      destination,
+      origin_airport,
+      destination_airport,
       departure_time,
       arrival_time,
-      distance
     } = req.body;
 
-    // Model API'ye gönderilecek veriyi hazırla
-    const predictionData = {
-      date,
-      airline,
-      origin,
-      destination,
-      departure_time,
-      arrival_time,
-      distance: parseFloat(distance)
-    };
+    // Basic validation before calling the model API (the model API validates again)
+    if (!date || !airline || !origin_airport || !destination_airport || !departure_time || !arrival_time) {
+      return res.status(400).json({ message: "Flight prediction failed.", error: "missing required fields" });
+    }
 
-    // Model API'ye istek at
-    const response = await axios.post(`${MODEL_API_URL}/predict`, predictionData);
+    // The model API computes the distance itself from the airport coordinates (statute miles, as in training)
+    const predictionData = { date, airline, origin_airport, destination_airport, departure_time, arrival_time };
+    const headers = process.env.MODEL_API_KEY ? { "X-API-Key": process.env.MODEL_API_KEY } : {};
+
+    const response = await axios.post(`${MODEL_API_URL}/predict`, predictionData, { headers, timeout: 20000 });
 
     return res.status(200).json({ data: response.data });
   } catch (error) {
-    console.error("Prediction error:", error);
+    console.error("Prediction error:", error.message);
     return res.status(400).json({
       message: "Flight prediction failed.",
-      error: error.response?.data?.error || error.message
+      error: error.response?.data?.error || error.message,
     });
   }
 };

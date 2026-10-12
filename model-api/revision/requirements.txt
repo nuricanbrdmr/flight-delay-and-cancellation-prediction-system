@@ -1,0 +1,12 @@
+# Experiments of the revision (model-api/revision)
+numpy
+pandas
+scikit-learn
+xgboost>=2.0
+imbalanced-learn
+statsmodels
+matplotlib
+airportsdata
+meteostat<2
+pillow
+lxml

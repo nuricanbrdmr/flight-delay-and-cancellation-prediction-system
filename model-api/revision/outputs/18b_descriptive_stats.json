@@ -1,0 +1,16 @@
+{
+ "n_total": 3582425,
+ "n_cancelled": 101213,
+ "n_diverted": 8693,
+ "n_ok": 3472519,
+ "delayed_gt15": 635639,
+ "delayed_share": 0.18304838648831007,
+ "cause_n": 533863,
+ "cause_share": {
+  "Carrier": 0.3370284136566872,
+  "Weather": 0.038118393670286195,
+  "National Air System": 0.2569797869490862,
+  "Security": 0.003006389279646651,
+  "Late aircraft": 0.36486701644429376
+ }
+}

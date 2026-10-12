@@ -1,10 +1,8 @@
+# SmartTicket model API (cancel_delay_api.py)
 flask
 flask-cors
-pyngrok
-meteostat
-geopy
 numpy
 pandas
-scikit-learn
-joblib
-imblearn
+xgboost>=2.0
+airportsdata
+meteostat<2

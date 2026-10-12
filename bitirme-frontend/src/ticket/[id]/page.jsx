@@ -9,18 +9,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { axiosPrivate } from "../../api/axios";
 
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371; // Dünya'nın yarıçapı (km)
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c); // km cinsinden yuvarlanmış mesafe
-};
-
 const formatDateToYYYYMMDD = (dateStr) => {
   const date = new Date(dateStr);
   const year = date.getFullYear();
@@ -51,43 +39,24 @@ const TicketDetails = () => {
         const originAirport = flightData[0].legs[0].segments[0].origin.displayCode;
         const destAirport = flightData[0].legs[0].segments[0].destination.displayCode;
 
-        // Havaalanı koordinatlarını API'den al
-        const [originResponse, destResponse] = await Promise.all([
-          axiosPrivate.get(`/location/airportByCode?code=${originAirport}`),
-          axiosPrivate.get(`/location/airportByCode?code=${destAirport}`)
-        ]);
-
-        const originCoords = {
-          lat: originResponse.data.data.latitude,
-          lon: originResponse.data.data.longitude
-        };
-
-        const destCoords = {
-          lat: destResponse.data.data.latitude,
-          lon: destResponse.data.data.longitude
-        };
-
-        const distance = calculateDistance(
-          originCoords.lat,
-          originCoords.lon,
-          destCoords.lat,
-          destCoords.lon
-        );
-
-        // Her uçuş için tahmin yap
+        // One prediction per listed flight. Airports are sent as IATA codes; the model API derives the distance itself.
         const predictionPromises = flightData.map(async (itinerary) => {
           const predictFlightData = {
             date: formatDateToYYYYMMDD(flightInfo.dates.departDate),
             airline: itinerary.legs[0].segments[0].marketingCarrier.alternateId,
-            origin: fromValue.split(',')[1] + ',' + fromValue.split(',')[2],
-            destination: toValue.split(',')[1] + ',' + toValue.split(',')[2],
+            origin_airport: originAirport,
+            destination_airport: destAirport,
             departure_time: extractTimeFromISO(itinerary.legs[0].segments[0].departure),
             arrival_time: extractTimeFromISO(itinerary.legs[0].segments[0].arrival),
-            distance: distance
           };
 
-          const response = await axiosPrivate.post('/flight/predict', predictFlightData);
-          return response.data;
+          try {
+            const response = await axiosPrivate.post('/flight/predict', predictFlightData);
+            return response.data;
+          } catch (err) {
+            console.error('Prediction failed for one flight:', err);
+            return null; // the ticket card is shown without a risk indication
+          }
         });
 
         const results = await Promise.all(predictionPromises);

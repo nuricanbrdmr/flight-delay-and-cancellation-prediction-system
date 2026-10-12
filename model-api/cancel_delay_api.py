@@ -1,587 +1,307 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import joblib
-import pandas as pd
-import numpy as np
-from datetime import datetime
-from meteostat import Point, Daily
-from sklearn.preprocessing import LabelEncoder
-from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
-import warnings
-warnings.filterwarnings('ignore')
-from sklearn.preprocessing import StandardScaler
-from sklearn.impute import SimpleImputer
+"""SmartTicket model API, version 2 (revision).
+
+Serves the models validated in model-api/revision (chronological protocol, no resampling, no post-hoc probability adjustments):
+  * cancellation probability               (binary XGBoost)
+  * cancellation cause A/B/C, conditional on a cancellation  (XGBoost)
+  * departure-delay class probabilities    (four classes, XGBoost without class weights)
+
+Mode A only: information up to the previous completed day (D-1):
+  calendar/holiday + schedule + observed D-1 weather (origin, destination; Meteostat station data)
+  + recent operational history (cancellation / delay rates of D-1 and D-7..D-1; only available for 2023-01-01..2024-01-31 here).
+Mode B (same-day operational state three hours before departure) needs a live data feed and is NOT implemented in this API.
+
+What the output is: a risk indicator from recent observations - not a weather forecast and not a guarantee.
+Missing inputs are reported in `warnings`; neutral training-period averages are used for unavailable history.
+"""
+import json
 import os
-import traceback
+import threading
+import time
+from datetime import datetime, timedelta
+from pathlib import Path
 
-# Flask uygulaması ve CORS ayarları
+import airportsdata
+import numpy as np
+import pandas as pd
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from pandas.tseries.holiday import USFederalHolidayCalendar
+from xgboost import Booster, DMatrix
+
+HERE = Path(__file__).resolve().parent
+ART = Path(os.environ.get("MODEL_ARTIFACTS", HERE / "models_v2"))
+WEATHER_VARS = ["tmin", "tmax", "tavg", "prcp", "snow", "wspd", "pres"]
+DEST_WEATHER_VARS = ["tmin", "tmax", "prcp", "snow", "wspd"]
+MI_PER_KM = 0.621371
+
 app = Flask(__name__)
-CORS(app)
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024            # requests are tiny; reject anything larger
+CORS(app, origins=os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(","))
+API_KEY = os.environ.get("MODEL_API_KEY")                 # optional shared secret between backend and model API
 
-# Model yolları - models klasöründen yükle
-MODEL_CANCELLED_PATH = os.path.join('models', 'model_cancelled.joblib')
-MODEL_CODE_PATH = os.path.join('models', 'model_cancel_code.joblib')
-MODEL_DELAY_PATH = os.path.join('models', 'model_delay.joblib')
+_state = {}
+_lock = threading.Lock()
+_weather_cache = {}
+_iata = None
 
-# İptal kodları açıklamaları
-CANCELLATION_CODES = {
-    0: 'A: Havayolu/Taşıyıcı kaynaklı',
-    1: 'B: Hava durumu kaynaklı',
-    2: 'C: Ulusal Hava Sistemi kaynaklı',
-    3: 'D: Güvenlik kaynaklı',
-    4: 'N: İptal yok'
-}
 
-# Gecikme sınıfları açıklamaları
-DELAY_CLASSES = {
-    0: "Zamanında veya erken",
-    1: "Hafif gecikme (1-15 dakika)",
-    2: "Orta gecikme (16-30 dakika)",
-    3: "Ciddi gecikme (30+ dakika)"
-}
+# ------------------------------------------------------------------------------------------------ artifacts
+def load_artifacts():
+    with _lock:
+        if _state:
+            return _state
+        cfg = json.load(open(ART / "config.json"))
+        models = {}
+        for name in ("cancel", "code", "delay"):
+            b = Booster()
+            b.load_model(str(ART / f"{name}.ubj"))
+            models[name] = b
+        hist = {
+            "nat": pd.read_csv(ART / "history_nat.csv.gz").set_index("FL_DATE"),
+            "org": pd.read_csv(ART / "history_org.csv.gz").set_index(["ORIGIN", "FL_DATE"]),
+            "air": pd.read_csv(ART / "history_air.csv.gz").set_index(["AIRLINE_CODE", "FL_DATE"]),
+        }
+        stations = pd.read_csv(ART / "weather_station_map.csv").set_index("ORIGIN").stations.fillna("").to_dict()
+        _state.update(cfg=cfg, models=models, hist=hist, stations=stations)
+        return _state
 
-# Havayolu ve şehir eşleştirmeleri
-AIRLINE_MAPPING = {
-    'THY': 'AA',  # Turkish Airlines -> American Airlines
-    'PEGASUS': 'WN',  # Pegasus -> Southwest
-    'ANADOLUJET': 'EV',  # AnadoluJet -> ExpressJet
-    'SUNEXPRESS': 'F9'  # SunExpress -> Frontier
-}
 
-CITY_MAPPING = {
-    'Istanbul': 'New York, NY',
-    'Izmir': 'Los Angeles, CA',
-    'Ankara': 'Chicago, IL',
-    'Antalya': 'Miami, FL',
-    'Bodrum': 'Orlando, FL',
-    'Dalaman': 'Tampa, FL',
-    'Trabzon': 'Seattle, WA',
-    'Adana': 'Houston, TX',
-    'Gaziantep': 'Dallas, TX',
-    'Kayseri': 'Denver, CO'
-}
+def airports():
+    global _iata
+    if _iata is None:
+        _iata = airportsdata.load("IATA")
+    return _iata
 
-# Global nesneleri tanımla
-model_cancelled = None
-model_code = None
-model_delay = None
-imputer = None
-scaler = None
-imputer_delay = None
-scaler_delay = None
-airline_encoder = None
-city_encoder = None
 
-# Model eğitiminde kullanılan özellik sırası
-FEATURE_ORDER = [
-    'YEAR_NORMALIZED', 'MONTH', 'DAY', 'DAY_OF_WEEK', 'SEASON',
-    'MONTH_SIN', 'MONTH_COS', 'DAY_SIN', 'DAY_COS',
-    'AIR', 'ORG', 'DST', 'CRS_DEP_TIME', 'CRS_ARR_TIME',
-    'DISTANCE', 'DISTANCE_CATEGORY', 'DEP_TIME_DETAILED',
-    'tmin', 'tmax', 'prcp', 'snow', 'wdir', 'wspd',
-    'wpgt', 'pres', 'tsun', 'WEATHER_COMPOSITE',
-    'ROUTE_POPULARITY_LOG', 'AIRLINE_RELIABILITY'
-]
+# ------------------------------------------------------------------------------------------------ helpers
+def hhmm_to_min(hhmm):
+    hhmm = int(hhmm)
+    return (hhmm // 100) * 60 + hhmm % 100
 
-def load_models():
-    """Model ve diğer dosyaları yükler"""
-    global model_cancelled, model_code, model_delay, imputer, scaler, imputer_delay, scaler_delay, airline_encoder, city_encoder
 
+def parse_time(value, field):
     try:
-        model_cancelled = joblib.load(MODEL_CANCELLED_PATH)
-        model_code = joblib.load(MODEL_CODE_PATH)
-        model_delay = joblib.load(MODEL_DELAY_PATH)
-        
-        # Encoder'ları yükle
-        airline_encoder = joblib.load(os.path.join('models', 'label_enc_airline.joblib'))
-        city_encoder = joblib.load(os.path.join('models', 'label_enc_origin.joblib'))
-        
-        # Orijinal imputer ve scaler'ı yükle
-        imputer = joblib.load(os.path.join('models', 'imputer.joblib'))
-        scaler = joblib.load(os.path.join('models', 'scaler.joblib'))
-        
-        # Gecikme modeli için imputer ve scaler'ı yükle
-        imputer_delay = joblib.load(os.path.join('models', 'imputer_delay.joblib'))
-        scaler_delay = joblib.load(os.path.join('models', 'scaler_delay.joblib'))
-        
-        return True
-    except Exception as e:
-        print(f"Model yükleme hatası: {str(e)}")
-        return False
-
-# Geocoding servisi
-class GeocodingService:
-    def __init__(self):
-        self.geolocator = Nominatim(user_agent="flight_predictor")
-        self.cache = {}
-
-    def get_coordinates(self, city_name, country=None):
-        cache_key = f"{city_name}, {country}" if country else city_name
-        if cache_key in self.cache:
-            return self.cache[cache_key]
-        try:
-            location = self.geolocator.geocode(cache_key, timeout=10)
-            if location:
-                coords = {'lat': location.latitude, 'lon': location.longitude}
-                self.cache[cache_key] = coords
-                return coords
-            return {'lat': 0, 'lon': 0}  # Varsayılan koordinatlar
-        except Exception:
-            return {'lat': 0, 'lon': 0}  # Hata durumunda varsayılan
-
-geocoding_service = GeocodingService()
-
-def get_weather_data(city_name, date):
-    """Hava durumu verisi alır, hata durumunda varsayılan değerler döndürür"""
-    default_weather = {
-        'tmin': 0, 'tmax': 0, 'prcp': 0, 'snow': 0,
-        'wdir': 0, 'wspd': 0, 'wpgt': 0, 'pres': 1013.25, 'tsun': 0
-    }
-
-    try:
-        coords = geocoding_service.get_coordinates(city_name)
-        point = Point(coords['lat'], coords['lon'])
-        weather_data = Daily(point, date, date).fetch()
-
-        if weather_data.empty:
-            return default_weather
-
-        weather_dict = weather_data.iloc[0].fillna(0).to_dict()
-        result = {}
-        for key in default_weather.keys():
-            result[key] = weather_dict.get(key, default_weather[key])
-        return result
+        h, m = str(value).strip().split(":")[:2]
+        h, m = int(h), int(m)
+        if not (0 <= h < 24 and 0 <= m < 60):
+            raise ValueError
+        return h * 100 + m
     except Exception:
-        return default_weather
+        raise ValueError(f"{field} must be 'HH:MM'")
 
-def weather_composite_score(weather):
-    """Hava durumu composite score hesaplar"""
-    score = 0
 
-    # Yağış etkisi
-    if weather['prcp'] > 0:
-        score += min(weather['prcp'] / 10, 3)  # Max 3 puan
+def great_circle_miles(a, b):
+    lat1, lon1, lat2, lon2 = map(np.radians, (a["lat"], a["lon"], b["lat"], b["lon"]))
+    h = np.sin((lat2 - lat1) / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2
+    return float(2 * 3958.8 * np.arcsin(np.sqrt(h)))
 
-    # Kar etkisi (daha ağır)
-    if weather['snow'] > 0:
-        score += min(weather['snow'] / 5, 4)   # Max 4 puan
 
-    # Rüzgar etkisi
-    if weather['wspd'] > 10:
-        score += min((weather['wspd'] - 10) / 10, 2)  # Max 2 puan
+def holiday_features(day):
+    hol = USFederalHolidayCalendar().holidays(day - timedelta(days=400), day + timedelta(days=400)).values
+    d = np.datetime64(day.date())
+    pos = np.searchsorted(hol, d)
+    nxt, prv = hol[min(pos, len(hol) - 1)], hol[max(pos - 1, 0)]
+    return min(float((nxt - d) / np.timedelta64(1, "D")), 14.0), min(float((d - prv) / np.timedelta64(1, "D")), 14.0)
 
-    # Sıcaklık ekstremleği
-    if weather['tmax'] > 35 or weather['tmin'] < -10:
-        score += 1
 
-    # Basınç etkisi
-    if weather['pres'] < 1000 or weather['pres'] > 1025:
-        score += 0.5
+def fetch_weather(iata, day):
+    """Observed daily weather of calendar day `day` at the airport (same station logic as in training); None if not (yet) available."""
+    if day.date() >= datetime.utcnow().date():
+        return None                                           # the day is not completed yet
+    key = (iata, day.date().isoformat())
+    if key in _weather_cache:
+        return _weather_cache[key]
+    st = load_artifacts()["stations"].get(iata, "")
+    out = None
+    if st:
+        from meteostat import Daily                           # imported lazily: the API also works offline for history-only use
+        merged = {}
+        for sid in [s.split("@")[0] for s in st.split(";") if s]:
+            try:
+                d = Daily(sid, day, day).fetch()
+            except Exception:
+                continue
+            if d is None or d.empty:
+                continue
+            row = d.iloc[0]
+            for v in WEATHER_VARS:
+                if v not in merged and pd.notna(row.get(v)):
+                    merged[v] = float(row[v])
+        out = merged or None
+    _weather_cache[key] = out
+    return out
 
-    return min(score, 10)  # Maximum 10
 
-def categorize_time_detailed(time):
-    """Uçuş zamanını kategorize eder"""
-    if pd.isna(time):
-        return 0
-    hour = int(time // 100)
-    if 5 <= hour < 8:
-        return 1   # Erken sabah (yoğun)
-    elif 8 <= hour < 12:
-        return 2   # Sabah (orta)
-    elif 12 <= hour < 15:
-        return 3   # Öğlen (düşük)
-    elif 15 <= hour < 19:
-        return 4   # Öğleden sonra (yoğun)
-    elif 19 <= hour < 22:
-        return 5   # Akşam (orta)
-    else:
-        return 6   # Gece (düşük)
+def history_for(day, origin, airline):
+    """History feature dict (H_*) from the lookup tables; neutral training-period averages where unavailable."""
+    S = load_artifacts()
+    pri = S["cfg"]["priors"]
+    key = day.strftime("%Y-%m-%d")
+    vals, found = {}, {"nat": False, "org": False, "air": False}
+    for lvl, tab, idx in (("nat", S["hist"]["nat"], key), ("org", S["hist"]["org"], (origin, key)), ("air", S["hist"]["air"], (airline, key))):
+        try:
+            row = tab.loc[idx]
+            vals.update(row.to_dict())
+            found[lvl] = True
+        except KeyError:
+            pass
+    for lvl in ("NAT", "ORG", "AIR"):
+        for w in ("D1", "D7"):
+            for m, p in (("CANCEL", pri["cancel"]), ("DELAY15", pri["delay15"]), ("MEANDELAY", pri["mean_delay"])):
+                vals.setdefault(f"H_{lvl}_{w}_{m}", p)
+    return vals, all(found.values())
 
-def prepare_features(data):
-    """İstek verisinden model özellikleri hazırlar"""
-    try:
-        # Tarihi parse et
-        flight_date = datetime.strptime(data['date'], '%Y-%m-%d')
-        
-        # Yıl normalizasyonu
-        min_year = 2015  # Model eğitimindeki minimum yıl
-        max_year = 2024  # Model eğitimindeki maximum yıl
-        year_normalized = (flight_date.year - min_year) / (max_year - min_year)
 
-        # Mevsimsel özellikler
-        season = {12: 0, 1: 0, 2: 0,  # Kış
-                 3: 1, 4: 1, 5: 1,   # İlkbahar
-                 6: 2, 7: 2, 8: 2,   # Yaz
-                 9: 3, 10: 3, 11: 3}[flight_date.month]
+def build_features(raw, weather, history, feature_names, cfg):
+    """One-row DataFrame with exactly the training feature layout.
+    raw: date (datetime), airline, origin, destination (IATA), crs_dep/crs_arr (hhmm ints), distance_miles
+    weather: dict with D1_* / DEST_D1_* feature names (None values = missing) ; history: dict with H_* feature names"""
+    day = raw["date"]
+    doy = day.timetuple().tm_yday
+    to_h, since_h = holiday_features(day)
+    route = cfg["route_counts"].get(f"{raw['origin']}-{raw['destination']}", 0)
+    f = {
+        "MONTH_SIN": np.sin(2 * np.pi * day.month / 12), "MONTH_COS": np.cos(2 * np.pi * day.month / 12), "DAY_OF_WEEK": float(day.weekday()),
+        "DOY_SIN": np.sin(2 * np.pi * doy / 366), "DOY_COS": np.cos(2 * np.pi * doy / 366),
+        "DAYS_TO_HOLIDAY": to_h, "DAYS_SINCE_HOLIDAY": since_h,
+        "CRS_DEP_MIN": float(hhmm_to_min(raw["crs_dep"])), "CRS_ARR_MIN": float(hhmm_to_min(raw["crs_arr"])),
+        "DISTANCE": float(raw["distance_miles"]), "ROUTE_COUNT_LOG_TRAIN": float(np.log1p(route)),
+    }
+    f.update({k: (np.nan if v is None else v) for k, v in weather.items()})
+    f.update(history)
+    row = {n: f.get(n, np.nan) for n in feature_names if n not in ("AIRLINE_CODE", "ORIGIN", "DEST")}
+    X = pd.DataFrame([row])
+    for col, val in (("AIRLINE_CODE", raw["airline"]), ("ORIGIN", raw["origin"]), ("DEST", raw["destination"])):
+        X[col] = pd.Categorical([val], categories=cfg["cats"][col])
+    return X[feature_names]
 
-        # Yaz ayı için ideal hava durumu değerleri
-        if season == 2:  # Yaz
-            weather = {
-                'tmin': 22.0,
-                'tmax': 30.0,
-                'prcp': 0.0,
-                'snow': 0.0,
-                'wdir': 180.0,
-                'wspd': 3.0,
-                'wpgt': 0.0,
-                'pres': 1015.0,
-                'tsun': 10.0
-            }
-        else:
-            # Diğer mevsimler için varsayılan değerler
-            weather = {
-                'tmin': 15.0,
-                'tmax': 25.0,
-                'prcp': 0.0,
-                'snow': 0.0,
-                'wdir': 180.0,
-                'wspd': 5.0,
-                'wpgt': 0.0,
-                'pres': 1015.0,
-                'tsun': 8.0
-            }
 
-        # Havayolu ve şehir kodlarını dönüştür
-        airline_code = safe_encode(airline_encoder, data.get('airline', 'Unknown'), 0)
-        origin_code = safe_encode(city_encoder, data.get('origin', 'Unknown'), 0)
-        dest_code = safe_encode(city_encoder, data.get('destination', 'Unknown'), 0)
+def predict_all(X_by_model):
+    S = load_artifacts()
+    out = {}
+    for name, X in X_by_model.items():
+        booster = S["models"][name]
+        best = booster.attr("best_iteration")                 # early stopping: only the first best_iteration+1 trees are used (as in the evaluation)
+        rng = (0, int(best) + 1) if best is not None else (0, 0)
+        out[name] = booster.predict(DMatrix(X, enable_categorical=True), iteration_range=rng)
+    return out
 
-        # Zaman değerlerini düzenle
-        dep_time = int(data.get('departure_time', '00:00').replace(':', ''))
-        arr_time = int(data.get('arrival_time', '00:00').replace(':', ''))
 
-        # Mesafe değerini al ve kategorize et
-        distance = float(data.get('distance', 0))
-        distance_category = pd.cut([distance], 
-                                 bins=[0, 400, 800, 1500, 3000, 6000],
-                                 labels=[0, 1, 2, 3, 4])[0]
+# ------------------------------------------------------------------------------------------------ routes
+def check_key():
+    if API_KEY and request.headers.get("X-API-Key") != API_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    return None
 
-        # Trigonometric features
-        month_sin = np.sin(2 * np.pi * flight_date.month / 12)
-        month_cos = np.cos(2 * np.pi * flight_date.month / 12)
-        day_sin = np.sin(2 * np.pi * flight_date.day / 31)
-        day_cos = np.cos(2 * np.pi * flight_date.day / 31)
 
-        # Hava durumu composite score
-        weather_score = weather_composite_score(weather)
-
-        # Uçuş zamanı kategorisi
-        dep_time_detailed = categorize_time_detailed(dep_time)
-
-        # Route popularity ve airline reliability için sabit değerler
-        route_popularity_log = 5.0  # Yüksek rota popülerliği
-        airline_reliability = 0.05  # Düşük iptal oranı
-
-        # Model özelliklerini oluştur
-        features = {
-            'YEAR_NORMALIZED': year_normalized,
-            'MONTH': flight_date.month,
-            'DAY': flight_date.day,
-            'DAY_OF_WEEK': flight_date.weekday(),
-            'SEASON': season,
-            'MONTH_SIN': month_sin,
-            'MONTH_COS': month_cos,
-            'DAY_SIN': day_sin,
-            'DAY_COS': day_cos,
-            'AIR': airline_code,
-            'ORG': origin_code,
-            'DST': dest_code,
-            'CRS_DEP_TIME': dep_time,
-            'CRS_ARR_TIME': arr_time,
-            'DISTANCE': distance,
-            'DISTANCE_CATEGORY': distance_category,
-            'DEP_TIME_DETAILED': dep_time_detailed,
-            'tmin': weather['tmin'],
-            'tmax': weather['tmax'],
-            'prcp': weather['prcp'],
-            'snow': weather['snow'],
-            'wdir': weather['wdir'],
-            'wspd': weather['wspd'],
-            'wpgt': weather['wpgt'],
-            'pres': weather['pres'],
-            'tsun': weather['tsun'],
-            'WEATHER_COMPOSITE': weather_score,
-            'ROUTE_POPULARITY_LOG': route_popularity_log,
-            'AIRLINE_RELIABILITY': airline_reliability
-        }
-
-        # Özellikleri sıralı bir şekilde numpy array'e dönüştür
-        features_array = np.array([[features[name] for name in FEATURE_ORDER]])
-
-        # Veriyi impute et
-        features_imputed = imputer.transform(features_array)
-
-        # Ölçeklendirme
-        features_scaled = scaler.transform(features_imputed)
-
-        return features_scaled[0]  # Tek boyutlu array döndür
-
-    except Exception as e:
-        print(f"Özellik hazırlama hatası: {str(e)}")
-        return None
-
-def prepare_delay_features(data):
-    """Gecikme modeli için özellik hazırlar"""
-    try:
-        # Tarihi parse et
-        flight_date = datetime.strptime(data['date'], '%Y-%m-%d')
-        
-        # Havayolu ve şehir kodlarını dönüştür
-        airline_code = safe_encode(airline_encoder, data.get('airline', 'Unknown'), 0)
-        origin_code = safe_encode(city_encoder, data.get('origin', 'Unknown'), 0)
-        dest_code = safe_encode(city_encoder, data.get('destination', 'Unknown'), 0)
-
-        # Zaman değerlerini düzenle
-        dep_time = int(data.get('departure_time', '00:00').replace(':', ''))
-        arr_time = int(data.get('arrival_time', '00:00').replace(':', ''))
-
-        # Mesafe değerini al
-        distance = float(data.get('distance', 0))
-
-        # Yaz ayı için ideal hava durumu değerleri
-        if flight_date.month in [6, 7, 8]:  # Yaz
-            weather = {
-                'tmin': 22.0,
-                'tmax': 30.0,
-                'prcp': 0.0,
-                'snow': 0.0,
-                'wdir': 180.0,
-                'wspd': 3.0,
-                'wpgt': 0.0,
-                'pres': 1015.0,
-                'tsun': 10.0
-            }
-        else:
-            # Diğer mevsimler için varsayılan değerler
-            weather = {
-                'tmin': 15.0,
-                'tmax': 25.0,
-                'prcp': 0.0,
-                'snow': 0.0,
-                'wdir': 180.0,
-                'wspd': 5.0,
-                'wpgt': 0.0,
-                'pres': 1015.0,
-                'tsun': 8.0
-            }
-
-        # Gecikme modeli için özellikleri oluştur (imputer'ın beklediği tüm özellikler)
-        features = {
-            'YEAR': flight_date.year,
-            'MONTH': flight_date.month,
-            'DAY': flight_date.day,
-            'AIR': airline_code,
-            'ORG': origin_code,
-            'DST': dest_code,
-            'CRS_DEP_TIME': dep_time,
-            'DISTANCE': distance,
-            'tmin': weather['tmin'],
-            'tmax': weather['tmax'],
-            'prcp': weather['prcp'],
-            'snow': weather['snow'],
-            'wdir': weather['wdir'],
-            'wspd': weather['wspd'],
-            'wpgt': weather['wpgt'],
-            'pres': weather['pres'],
-            'tsun': weather['tsun'],
-            'DEP_TIME': dep_time,  # İmputer'ın beklediği ek özellik
-            'CRS_ARR_TIME': arr_time  # İmputer'ın beklediği ek özellik
-        }
-
-        # Özellikleri sıralı bir şekilde numpy array'e dönüştür
-        features_array = np.array([[features[name] for name in sorted(features.keys())]])
-
-        # Veriyi impute et (gecikme modeli için)
-        features_imputed = imputer_delay.transform(features_array)
-
-        # Ölçeklendirme (gecikme modeli için)
-        features_scaled = scaler_delay.transform(features_imputed)
-
-        # Model için gerekli olan 17 özelliği seç
-        model_features = features_scaled[0][:17]  # İlk 17 özelliği al
-
-        return model_features  # Tek boyutlu array döndür
-
-    except Exception as e:
-        print(f"Gecikme özellik hazırlama hatası: {str(e)}")
-        return None
-
-def safe_encode(encoder, value, default=0):
-    """Güvenli bir şekilde encode eder, hata durumunda default değeri döndürür"""
-    try:
-        # Havayolu kodları için büyük harfe çevir
-        if value in AIRLINE_MAPPING.values():
-            value = str(value).upper()
-        # Şehir isimleri için orijinal formatı koru
-        else:
-            value = str(value)
-        result = encoder.transform([value])[0]
-        return int(result)
-    except Exception as e:
-        print(f"Encoding error for {value}: {str(e)}")
-        return default
-
-@app.route('/predict', methods=['POST'])
+@app.route("/predict", methods=["POST"])
 def predict():
-    """Hızlı düzeltme ile tahmin fonksiyonu"""
+    denied = check_key()
+    if denied:
+        return denied
+    t0 = time.time()
     try:
-        data = request.json
-        print("\nGelen istek verisi:", data)
+        S = load_artifacts()
+        cfg = S["cfg"]
+        data = request.get_json(force=True, silent=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "request body must be a JSON object"}), 400
+        try:
+            day = datetime.strptime(str(data["date"]), "%Y-%m-%d")
+        except Exception:
+            return jsonify({"error": "date must be 'YYYY-MM-DD'"}), 400
+        if day.year < 2019:
+            return jsonify({"error": "date must be 2019-01-01 or later"}), 400
+        airline = str(data.get("airline", "")).upper().strip()
+        o_code = str(data.get("origin_airport", "")).upper().strip()
+        d_code = str(data.get("destination_airport", "")).upper().strip()
+        ap = airports()
+        if o_code not in ap or d_code not in ap or o_code == d_code:
+            return jsonify({"error": "origin_airport and destination_airport must be two different valid IATA airport codes"}), 400
+        try:
+            crs_dep, crs_arr = parse_time(data.get("departure_time"), "departure_time"), parse_time(data.get("arrival_time"), "arrival_time")
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        miles = great_circle_miles(ap[o_code], ap[d_code])            # computed here: the front end sends kilometres, the model was trained on statute miles
 
-        if model_cancelled is None:
-            if not load_models():
-                return jsonify({'error': 'Modeller yüklenemedi'}), 500
+        warnings = []
+        for label, val, key in (("airline", airline, "AIRLINE_CODE"), ("origin airport", o_code, "ORIGIN"), ("destination airport", d_code, "DEST")):
+            if val not in cfg["cats"][key]:
+                warnings.append(f"{label} '{val}' was not seen in the training period; it is treated as missing")
 
-        features_scaled = prepare_features(data)
-        if features_scaled is None:
-            return jsonify({'error': 'Özellik hazırlama hatası'}), 400
+        prev_day = day - timedelta(days=1)
+        w_o, w_d = fetch_weather(o_code, prev_day), fetch_weather(d_code, prev_day)
+        weather = {f"D1_{v}": (w_o or {}).get(v) for v in WEATHER_VARS}
+        weather.update({f"DEST_D1_{v}": (w_d or {}).get(v) for v in DEST_WEATHER_VARS})
+        weather_ok = bool(w_o)
+        if prev_day.date() >= datetime.utcnow().date():
+            warnings.append("weather of the day before the flight is not yet observed (future flight date); the models treat it as missing")
+        elif not weather_ok:
+            warnings.append("no station weather found for the origin airport on the previous day; treated as missing")
+        hist, hist_ok = history_for(day, o_code, airline)
+        if not hist_ok:
+            warnings.append("recent operational history (D-1 / D-7) is only available for 2023-01-01..2024-01-31 in this prototype; neutral training-period averages are used")
 
-        # İptal tahmini
-        cancelled_pred = model_cancelled.predict([features_scaled])[0]
-        cancelled_proba = model_cancelled.predict_proba([features_scaled])[0]
-
-        print(f"Ham tahmin: İptal={cancelled_pred}, Olasılık={cancelled_proba}")
-
-        # === HİZLI DÜZELTMELERİ UYGULA ===
-        flight_date = datetime.strptime(data['date'], '%Y-%m-%d')
-        dep_time = int(data.get('departure_time', '00:00').replace(':', ''))
-        distance = float(data.get('distance', 0))
-        
-        # Düzeltme faktörü hesapla
-        correction_factor = 1.0
-        correction_reasons = []
-        
-        # 1. Yaz ayları düzeltmesi
-        if flight_date.month in [6, 7, 8]:
-            correction_factor *= 0.3  # %70 azaltma
-            correction_reasons.append("Yaz ayı")
-        
-        # 2. Gündüz uçuşları düzeltmesi  
-        if 800 <= dep_time <= 1800:
-            correction_factor *= 0.5  # %50 azaltma
-            correction_reasons.append("Gündüz uçuşu")
-        
-        # 3. Kısa mesafe düzeltmesi
-        if distance < 1000:
-            correction_factor *= 0.6  # %40 azaltma
-            correction_reasons.append("Kısa mesafe")
-        
-        # 4. Popüler havayolları düzeltmesi
-        if data.get('airline') in ['AA', 'DL', 'UA']:
-            correction_factor *= 0.7  # %30 azaltma
-            correction_reasons.append("Güvenilir havayolu")
-        
-        # Düzeltmeyi uygula
-        if correction_factor < 1.0:
-            original_cancel_prob = cancelled_proba[1]
-            adjusted_cancel_prob = original_cancel_prob * correction_factor
-            
-            # Minimum %2, maksimum %95 sınırı
-            adjusted_cancel_prob = max(0.02, min(0.95, adjusted_cancel_prob))
-            
-            cancelled_proba = np.array([1 - adjusted_cancel_prob, adjusted_cancel_prob])
-            
-            print(f"Düzeltmeler uygulandı: {correction_reasons}")
-            print(f"Düzeltme faktörü: {correction_factor}")
-            print(f"Orijinal: {original_cancel_prob:.4f} -> Düzeltilmiş: {adjusted_cancel_prob:.4f}")
-        
-        # Yeni karar ver (yüksek threshold)
-        THRESHOLD = 0.45
-        cancelled_pred = 1 if cancelled_proba[1] > THRESHOLD else 0
-        
-        print(f"Final karar: İptal={cancelled_pred} (Threshold: {THRESHOLD})")
-        
-        # Güven skoru
-        confidence = max(cancelled_proba)
-        
-        # Sonuç hazırla
+        raw = dict(date=day, airline=airline, origin=o_code, destination=d_code, crs_dep=crs_dep, crs_arr=crs_arr, distance_miles=miles)
+        X = {n: build_features(raw, weather, hist, cfg["models"]["delay" if n == "delay" else n]["features"], cfg) for n in ("cancel", "code", "delay")}
+        P = predict_all(X)
+        p_cancel = float(P["cancel"][0])
+        cause = P["code"][0]
+        dly = P["delay"][0]
+        thr = cfg["thresholds"]["cancel_alert_f1_validation"]
+        base = cfg["priors"]["cancel"]
+        names = cfg["classes"]["delay"]
         result = {
-            'predictions': {
-                'cancelled': bool(cancelled_pred),
-                'cancelled_probability': {
-                    'not_cancelled': float(cancelled_proba[0]),
-                    'cancelled': float(cancelled_proba[1])
+            "predictions": {
+                "cancelled_probability": {"cancelled": p_cancel, "not_cancelled": 1 - p_cancel},
+                "cancel_alert": bool(p_cancel >= thr),
+                "alert_threshold": thr,
+                "base_rate": base,
+                "relative_risk": p_cancel / base,
+                "cancellation_cause_if_cancelled": {c: float(p) for c, p in zip(cfg["classes"]["cause"], cause)},
+                "delay": {
+                    "delay_class": names[int(np.argmax(dly))],
+                    "delay_probabilities": {n: float(p) for n, p in zip(names, dly)},
+                    "probability_delay_over_15_min": float(dly[2] + dly[3]),
                 },
-                'confidence': float(confidence),
-                'model_adjustments': {
-                    'corrections_applied': correction_reasons,
-                    'correction_factor': correction_factor,
-                    'threshold_used': THRESHOLD
-                }
-            }
+            },
+            "inputs": {"mode": "A", "weather_available": weather_ok, "history_available": hist_ok, "distance_miles": round(miles, 1), "weather_day": prev_day.strftime("%Y-%m-%d")},
+            "warnings": warnings,
+            "model_info": {
+                "version": cfg["version"], "evaluation_period": cfg["split"]["test"],
+                "cancel_test_pr_auc": cfg["test_metrics"]["cancel"]["pr_auc"], "cancel_test_roc_auc": cfg["test_metrics"]["cancel"]["roc_auc"], "no_skill_pr_auc": cfg["test_metrics"]["prevalence_test"],
+                "delay_test_accuracy": cfg["test_metrics"]["delay"]["accuracy"], "delay_majority_baseline": cfg["test_metrics"]["delay_baseline"],
+                "note": "Risk indicator based on recent observations; not a weather forecast and not a guarantee. Probabilities are not post-processed.",
+            },
+            "latency_ms": round(1000 * (time.time() - t0), 1),
         }
-
-        # İptal kodu tahmini
-        if cancelled_pred == 1:
-            code_pred = int(model_code.predict([features_scaled])[0])
-            code_probs = model_code.predict_proba([features_scaled])[0]
-            result['predictions']['cancellation_code'] = CANCELLATION_CODES[code_pred]
-            result['predictions']['cancellation_code_probabilities'] = {}
-            for i, prob in enumerate(code_probs):
-                if i in CANCELLATION_CODES:
-                    result['predictions']['cancellation_code_probabilities'][CANCELLATION_CODES[i]] = float(prob)
-        else:
-            # İptal olmayan uçuşlar için gecikme tahmini
-            delay_features = prepare_delay_features(data)
-            if delay_features is None:
-                return jsonify({'error': 'Gecikme özellik hazırlama hatası'}), 400
-                
-            delay_pred = int(model_delay.predict([delay_features])[0])
-            delay_probs = model_delay.predict_proba([delay_features])[0]
-            
-            result['predictions']['delay'] = {
-                'delay_class': DELAY_CLASSES[delay_pred],
-                'delay_probabilities': {}
-            }
-            
-            for i, prob in enumerate(delay_probs):
-                if i in DELAY_CLASSES:
-                    result['predictions']['delay']['delay_probabilities'][DELAY_CLASSES[i]] = float(prob)
-
         return jsonify(result)
+    except Exception as e:                                         # never leak stack traces to clients
+        app.logger.exception("prediction failed")
+        return jsonify({"error": "prediction failed", "detail": type(e).__name__}), 500
 
-    except Exception as e:
-        traceback_str = traceback.format_exc()
-        print(f"Hata: {str(e)}\nStack trace: {traceback_str}")
-        return jsonify({
-            'error': f"Tahmin hatası: {str(e)}",
-            'details': traceback_str
-        }), 400
-        
-@app.route('/airlines', methods=['GET'])
+
+@app.route("/airlines", methods=["GET"])
 def get_airlines():
-    """Desteklenen havayollarını döndürür"""
-    if airline_encoder is None:
-        load_models()
+    return jsonify({"airlines": load_artifacts()["cfg"]["cats"]["AIRLINE_CODE"]})
 
-    if airline_encoder is not None:
-        return jsonify({'airlines': list(airline_encoder.classes_)})
-    else:
-        return jsonify({'error': 'Havayolu kodlayıcı yüklenemedi'}), 500
 
-@app.route('/cities', methods=['GET'])
-def get_cities():
-    """Desteklenen şehirleri döndürür"""
-    if city_encoder is None:
-        load_models()
+@app.route("/airports", methods=["GET"])
+def get_airports():
+    return jsonify({"airports": load_artifacts()["cfg"]["cats"]["ORIGIN"]})
 
-    if city_encoder is not None:
-        return jsonify({'cities': list(city_encoder.classes_)})
-    else:
-        return jsonify({'error': 'Şehir kodlayıcı yüklenemedi'}), 500
 
-@app.route('/test', methods=['GET'])
+@app.route("/model-info", methods=["GET"])
+def model_info():
+    cfg = load_artifacts()["cfg"]
+    return jsonify({k: cfg[k] for k in ("version", "mode", "split", "priors", "thresholds", "test_metrics", "history_range")})
+
+
+@app.route("/test", methods=["GET"])
 def test():
-    """API'nin çalıştığını test eder"""
-    return jsonify({'status': 'ok', 'message': 'API çalışıyor'})
+    return jsonify({"status": "ok", "version": load_artifacts()["cfg"]["version"]})
 
-if __name__ == '__main__':
-    # Modelleri yükle
-    if not load_models():
-        print("Modeller yüklenemedi! Uygulama kapatılıyor...")
-        exit(1)
-    
-    # Sunucuyu başlat
-    app.run(host='0.0.0.0', port=5050, debug=False)
+
+if __name__ == "__main__":
+    load_artifacts()
+    app.run(host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", 5050)), debug=False, threaded=True)

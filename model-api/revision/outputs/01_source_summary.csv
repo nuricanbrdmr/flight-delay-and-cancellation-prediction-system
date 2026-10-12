@@ -1,0 +1,5 @@
+file,rows,date_min,date_max,unparsable_dates,cancelled,not_cancelled,cancel_rate
+flights_sample_3m.csv,1048575,2019-01-01,2023-08-31,0,27597,1020978,0.02632
+flight_data_2018_2024.csv,582425,2024-01-01,2024-01-31,0,22073,560352,0.0379
+flights_Cancel_final.csv,1446799,2016-01-01,2024-01-31,0,129957,1316842,0.08982
+flights_Delay_final.csv,2104853,2019-01-01,2023-08-31,0,72806,2032047,0.03459

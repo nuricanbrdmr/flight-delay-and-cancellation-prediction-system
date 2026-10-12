@@ -1,9 +1,19 @@
-import { Tag, Tooltip, Progress } from "antd";
-import { AiOutlineClockCircle, AiOutlineRobot } from "react-icons/ai";
+import { Tag, Tooltip, Progress, Alert } from "antd";
+import { AiOutlineClockCircle, AiOutlineRobot, AiOutlineWarning } from "react-icons/ai";
 import { MdFlightTakeoff, MdFlightLand } from "react-icons/md";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BsStars } from "react-icons/bs";
+
+// Class ids returned by the model API (model-api/cancel_delay_api.py) -> labels shown to the user
+const DELAY_LABELS = {
+  on_time_or_early: "Zamanında veya erken",
+  delay_1_15: "Hafif gecikme (1-15 dk)",
+  delay_16_30: "Orta gecikme (16-30 dk)",
+  delay_over_30: "Ciddi gecikme (30+ dk)",
+};
+const DELAY_COLORS = { on_time_or_early: "green", delay_1_15: "processing", delay_16_30: "warning", delay_over_30: "error" };
+const CAUSE_LABELS = { A: "Havayolu / taşıyıcı", B: "Hava durumu", C: "Ulusal hava sistemi" };
 
 const Ticket = ({
   logo,
@@ -14,38 +24,21 @@ const Ticket = ({
   departureCode,
   arrivalCode,
   price,
-  model
+  model,
 }) => {
   const [isCollapseOpen, setIsCollapseOpen] = useState(false);
 
-  const getDelayColor = (delayClass) => {
-    switch (delayClass) {
-      case "Zamanında veya erken":
-        return "green";
-      case "Hafif gecikme (1-15 dakika)":
-        return "processing";
-      case "Orta gecikme (16-30 dakika)":
-        return "warning";
-      case "Ciddi gecikme (30+ dakika)":
-        return "error";
-      default:
-        return "default";
-    }
-  };
+  const pred = model?.data?.predictions;
+  const inputs = model?.data?.inputs;
+  const warnings = model?.data?.warnings || [];
+  const info = model?.data?.model_info;
+  const pct = (v) => Math.round((v ?? 0) * 1000) / 10; // one decimal, e.g. 3.4
 
-  const getDelayIcon = (delayClass) => {
-    switch (delayClass) {
-      case "Zamanında veya erken":
-        return <MdFlightTakeoff />;
-      case "Hafif gecikme (1-15 dakika)":
-        return <AiOutlineClockCircle />;
-      case "Orta gecikme (16-30 dakika)":
-        return <AiOutlineClockCircle />;
-      case "Ciddi gecikme (30+ dakika)":
-        return <MdFlightLand />;
-      default:
-        return <AiOutlineClockCircle />;
-    }
+  const delayClass = pred?.delay?.delay_class;
+  const delayIcon = () => {
+    if (delayClass === "on_time_or_early") return <MdFlightTakeoff />;
+    if (delayClass === "delay_over_30") return <MdFlightLand />;
+    return <AiOutlineClockCircle />;
   };
 
   return (
@@ -84,40 +77,42 @@ const Ticket = ({
             </div>
           </div>
           <div className="flex flex-wrap gap-2 w-full md:w-auto items-center justify-center">
-            {model?.data?.predictions?.cancelled ? (
-              <Tag
-                color="error"
-                className="flex items-center gap-2 py-0.5"
-              >
-                <FaRobot className="text-lg" />
-                İptal Riski Yüksek
-              </Tag>
+            {pred ? (
+              <>
+                {pred.cancel_alert ? (
+                  <Tag color="error" className="flex items-center gap-2 py-0.5">
+                    <AiOutlineWarning className="text-lg" />
+                    İptal riski yüksek (%{pct(pred.cancelled_probability.cancelled)})
+                  </Tag>
+                ) : (
+                  <Tag color="success" className="flex items-center gap-2 py-0.5">
+                    İptal riski düşük (%{pct(pred.cancelled_probability.cancelled)})
+                  </Tag>
+                )}
+                <Tag color={DELAY_COLORS[delayClass] || "default"} className="flex items-center gap-2 py-0.5">
+                  {delayIcon()}
+                  {DELAY_LABELS[delayClass]}
+                </Tag>
+                <Tooltip title="Genel iptal oranına kıyasla, bu uçuş için modelin hesapladığı iptal olasılığı">
+                  <Tag color="blue" className="flex items-center gap-2 py-0.5">
+                    <AiOutlineRobot className="text-lg" />
+                    {pred.relative_risk.toFixed(1)}x göreli iptal riski
+                  </Tag>
+                </Tooltip>
+              </>
             ) : (
+              <Tag className="py-0.5">Risk tahmini alınamadı</Tag>
+            )}
+            {pred && (
               <Tag
-                color={getDelayColor(model?.data?.predictions?.delay?.delay_class)}
-                className="flex items-center gap-2 py-0.5"
+                color="cyan"
+                className="flex items-center gap-2 py-1 my-2 cursor-pointer hover:opacity-80"
+                onClick={() => setIsCollapseOpen(!isCollapseOpen)}
               >
-                {getDelayIcon(model?.data?.predictions?.delay?.delay_class)}
-                {model?.data?.predictions?.delay?.delay_class}
+                <BsStars className="text-lg" />
+                <span>FCDP-SFTS AI Model Tahmin Detayları</span>
               </Tag>
             )}
-            <Tooltip title="AI Tahmin Güven Oranı">
-              <Tag
-                color="blue"
-                className="flex items-center gap-2 py-0.5"
-              >
-                <AiOutlineRobot className="text-lg" />
-                {Math.round(model?.data?.predictions?.confidence * 100)}% Güven
-              </Tag>
-            </Tooltip>
-            <Tag
-              color="cyan"
-              className="flex items-center gap-2 py-1 my-2 cursor-pointer hover:opacity-80"
-              onClick={() => setIsCollapseOpen(!isCollapseOpen)}
-            >
-              <BsStars className="text-lg" />
-              <span>FCDP-SFTS AI Model Tahmin Detayları</span>
-            </Tag>
           </div>
         </div>
         <div className="relative flex flex-col items-center md:border-l-2 md:border-dashed md:pl-6 mt-4 md:mt-0">
@@ -131,14 +126,14 @@ const Ticket = ({
       </div>
       <div className="w-[70%] max-sm:w-[98%] mx-auto max-sm:mx-1">
         <AnimatePresence>
-          {isCollapseOpen && (
+          {isCollapseOpen && pred && (
             <motion.div
               key="ai-details"
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
+              animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-              style={{ overflow: 'hidden' }}
+              style={{ overflow: "hidden" }}
               className="space-y-4 p-4 bg-gray-50 border border-gray-200 mt-2 rounded-lg"
             >
               <div>
@@ -147,60 +142,84 @@ const Ticket = ({
                     FCDP-SFTS AI Model Tahmin Detayları
                   </span>
                 </h2>
-                <h3 className="font-semibold mb-2">İptal Durumu</h3>
+                <h3 className="font-semibold mb-2">İptal olasılığı</h3>
                 <div className="flex items-center gap-4">
                   <Progress
                     type="circle"
-                    percent={Math.round(model?.data?.predictions?.cancelled_probability?.cancelled * 100)}
+                    percent={pct(pred.cancelled_probability.cancelled)}
                     format={(percent) => `${percent}%`}
                     strokeColor="#ff4d4f"
                   />
-                  <Progress
-                    type="circle"
-                    percent={Math.round(model?.data?.predictions?.cancelled_probability?.not_cancelled * 100)}
-                    format={(percent) => `${percent}%`}
-                    strokeColor="#52c41a"
-                  />
                   <div>
                     <p className="text-sm text-gray-600">
-                      İptal Olasılığı: <span className="font-bold">{Math.round(model?.data?.predictions?.cancelled_probability?.cancelled * 100)}%</span>
+                      İptal olasılığı: <span className="font-bold">%{pct(pred.cancelled_probability.cancelled)}</span>
                     </p>
                     <p className="text-sm text-gray-600">
-                      İptal Olmama Olasılığı: <span className="font-bold">{Math.round(model?.data?.predictions?.cancelled_probability?.not_cancelled * 100)}%</span>
+                      Tüm uçuşlardaki ortalama iptal oranı (eğitim dönemi): <span className="font-bold">%{pct(pred.base_rate)}</span>
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Uyarı eşiği (doğrulama döneminde seçildi): <span className="font-bold">%{pct(pred.alert_threshold)}</span>
                     </p>
                   </div>
                 </div>
               </div>
 
-              {!model?.data?.predictions?.cancelled && (
-                <div>
-                  <h3 className="font-semibold mb-2">Gecikme Tahmini</h3>
-                  <div className="space-y-2">
-                    {Object.entries(model?.data?.predictions?.delay?.delay_probabilities || {}).map(([key, value]) => (
-                      <div key={key} className="flex items-center gap-2">
-                        <span className="w-48 text-sm text-gray-600">{key}:</span>
-                        <Progress
-                          percent={Math.round(value * 100)}
-                          size="small"
-                          status={key === model?.data?.predictions?.delay?.delay_class ? "active" : "normal"}
-                          strokeColor={key === "Zamanında veya erken" ? "#52c41a" : "#ff4d4f"}
-                        />
-                      </div>
-                    ))}
-                  </div>
+              <div>
+                <h3 className="font-semibold mb-2">Kalkış gecikmesi (olasılık dağılımı)</h3>
+                <div className="space-y-2">
+                  {Object.entries(pred.delay.delay_probabilities).map(([key, value]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <span className="w-48 text-sm text-gray-600">{DELAY_LABELS[key]}:</span>
+                      <Progress
+                        percent={pct(value)}
+                        size="small"
+                        status={key === delayClass ? "active" : "normal"}
+                        strokeColor={key === "on_time_or_early" ? "#52c41a" : "#ff4d4f"}
+                      />
+                    </div>
+                  ))}
+                  <p className="text-sm text-gray-600">
+                    15 dakikadan fazla gecikme olasılığı: <span className="font-bold">%{pct(pred.delay.probability_delay_over_15_min)}</span>
+                  </p>
                 </div>
-              )}
+              </div>
 
               <div>
-                <h3 className="font-semibold mb-2">Model Ayarlamaları</h3>
+                <h3 className="font-semibold mb-2">İptal edilirse olası neden</h3>
                 <div className="flex flex-wrap gap-2">
-                  {model?.data?.predictions?.model_adjustments?.corrections_applied.map((correction, index) => (
-                    <Tag key={index} color="blue">
-                      {correction}
+                  {Object.entries(pred.cancellation_cause_if_cancelled).map(([key, value]) => (
+                    <Tag key={key} color="blue">
+                      {CAUSE_LABELS[key]}: %{pct(value)}
                     </Tag>
                   ))}
                 </div>
               </div>
+
+              <div>
+                <h3 className="font-semibold mb-2">Kullanılan veriler</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Tag color={inputs?.weather_available ? "green" : "orange"}>
+                    {inputs?.weather_available ? "Önceki günün gözlenen hava verisi kullanıldı" : "Hava verisi yok"}
+                  </Tag>
+                  <Tag color={inputs?.history_available ? "green" : "orange"}>
+                    {inputs?.history_available ? "Son günlerin iptal/gecikme oranları kullanıldı" : "Güncel operasyon geçmişi yok (ortalama değerler)"}
+                  </Tag>
+                </div>
+                {warnings.map((w, i) => (
+                  <p key={i} className="text-xs text-gray-500 mt-1">{w}</p>
+                ))}
+              </div>
+
+              <Alert
+                type="info"
+                showIcon
+                message="Bu bir hava tahmini veya garanti değildir"
+                description={
+                  info
+                    ? `Model, önceki günün gözlemlerine ve geçmiş oranlara dayalı bir risk göstergesidir. ${info.evaluation_period} döneminde test edilmiş iptal ROC-AUC değeri ${info.cancel_test_roc_auc.toFixed(2)}, gecikme sınıfı doğruluğu %${pct(info.delay_test_accuracy)} (her uçuşa "zamanında" demenin doğruluğu %${pct(info.delay_majority_baseline)}). Olasılıklara ek bir düzeltme uygulanmamıştır.`
+                    : "Model, önceki günün gözlemlerine ve geçmiş oranlara dayalı bir risk göstergesidir."
+                }
+              />
             </motion.div>
           )}
         </AnimatePresence>

@@ -1,0 +1,19 @@
+{
+ "model_load_seconds": 2.6,
+ "n_cold": 30,
+ "cold_ms": {
+  "median": 383.6,
+  "p95": 423.9,
+  "max": 1053.0
+ },
+ "warm_ms": {
+  "median": 76.4,
+  "p95": 91.5,
+  "max": 93.6
+ },
+ "future_date_no_weather_ms": {
+  "median": 72.6,
+  "p95": 125.5
+ },
+ "note": "in-process; excludes HTTP/network transport and the flight-search call; cold = first request for an (airport, day) pair incl. Meteostat download"
+}

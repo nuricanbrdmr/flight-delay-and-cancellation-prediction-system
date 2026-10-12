@@ -1,0 +1,37 @@
+rows: zelaya 3000000 | singh 582425 | total 3582425
+duplicates on roadmap key (dropped): 0
+label consistency CANCELLED vs code:
+ CANCELLATION_CODE    False   True 
+CANCELLED                         
+0                  3481212       0
+1                        0  101213
+rows after weather join (must equal before): 3582425
+D-1 weather non-missing share:
+ D1_tmin    0.9970
+D1_tmax    0.9970
+D1_tavg    0.9975
+D1_prcp    0.9050
+D1_snow    0.6657
+D1_wspd    0.9974
+D1_pres    0.9906
+top origins with missing D-1 tmax:
+ ORIGIN
+EYW    2461
+ALB    1972
+BTR     875
+DTW     379
+BZN     368
+BQN     323
+DDC     288
+YUM     254
+CRP     248
+SUN     229
+
+                            rows  cancelled  diverted  cancel_rate
+SOURCE           FL_DATE                                          
+singh_2024_01    2024     582425      22073      1637      0.03790
+zelaya_2019_2023 2019     757673      13594      1983      0.01794
+                 2020     479350      28757       770      0.05999
+                 2021     611633      10532      1392      0.01722
+                 2022     687860      18448      1650      0.02682
+                 2023     463484       7809      1261      0.01685
