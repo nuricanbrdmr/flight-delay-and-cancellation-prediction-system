@@ -32,7 +32,8 @@ for tag, name in (("cancel", "cancel"), ("code", "code"), ("delayacc", "delay"))
 cost = pd.read_csv(O / "14_cancel_cost_threshold.csv")
 cfg = dict(
     version="2.0-revision", mode="A (information up to the previous completed day, D-1)",
-    split=dict(train="2019-01-01..2022-06-30", validation="2022-07-01..2022-12-31", test="2023-01-01..2024-01-31"),
+    split=dict(train="2019-01-01..2022-06-30", validation="2022-07-01..2022-12-31",
+              test="2023-01-01..2023-08-31 and 2024-01-01..2024-01-31"),   # the data contain no flights for 2023-09..2023-12
     cats={k: v for k, v in cats.items()},
     route_counts={f"{o}-{d}": int(n) for (o, d), n in route_counts.items()},
     priors=priors,

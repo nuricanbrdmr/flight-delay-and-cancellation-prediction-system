@@ -240,7 +240,7 @@ const TravelSearchInput = ({
               cursor: "pointer",
             }}
           >
-            Geri
+            Back
           </button>
         )}
       </div>
