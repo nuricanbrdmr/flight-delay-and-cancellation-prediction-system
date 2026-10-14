@@ -12,6 +12,8 @@ const DELAY_LABELS = {
   delay_16_30: "Moderate delay (16-30 min)",
   delay_over_30: "Serious delay (30+ min)",
 };
+// Fixed display order: the API (Flask) returns JSON keys in alphabetical order, which would list the classes out of sequence
+const DELAY_ORDER = ["on_time_or_early", "delay_1_15", "delay_16_30", "delay_over_30"];
 const DELAY_COLORS = { on_time_or_early: "green", delay_1_15: "processing", delay_16_30: "warning", delay_over_30: "error" };
 const CAUSE_LABELS = { A: "Carrier", B: "Weather", C: "National air system" };
 
@@ -167,7 +169,7 @@ const Ticket = ({
               <div>
                 <h3 className="font-semibold mb-2">Departure delay (probability distribution)</h3>
                 <div className="space-y-2">
-                  {Object.entries(pred.delay.delay_probabilities).map(([key, value]) => (
+                  {DELAY_ORDER.filter((key) => key in pred.delay.delay_probabilities).map((key) => [key, pred.delay.delay_probabilities[key]]).map(([key, value]) => (
                     <div key={key} className="flex items-center gap-2">
                       <span className="w-48 text-sm text-gray-600">{DELAY_LABELS[key]}:</span>
                       <Progress

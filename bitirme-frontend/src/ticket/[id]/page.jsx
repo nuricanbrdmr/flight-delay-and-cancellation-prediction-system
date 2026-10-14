@@ -161,7 +161,7 @@ const TicketDetails = () => {
             <div className="w-full flex max-sm:flex-col gap-3 px-8 justify-between">
               <div className="flex flex-col gap-1">
                 <span className="text-xl font-semibold">
-                  {fromValue.split(",")[0] + "," + fromValue.split(", ")[1]} - {toValue.split(",")[0] + ", " + toValue.split(",")[1]}
+                  {fromValue.split(",")[0] + ", " + fromValue.split(",")[1]} - {toValue.split(",")[0] + ", " + toValue.split(",")[1]}
                 </span>
                 <span className="text-gray-600">
                   {flightInfo.dates.departDate} | {flightInfo.classType.charAt(0).toUpperCase() + flightInfo.classType.slice(1)} | {flightInfo.passengers.adult} Passenger  {flightInfo.passengers.children} Child  {flightInfo.passengers.infants} Baby
