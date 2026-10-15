@@ -17,6 +17,8 @@ Mode A = information up to the previous day, Mode B = additionally the same-day 
 
 ## Use
 
+`XGBClassifier.predict_proba` uses the best iteration stored in the model; when you call `Booster.predict` directly, pass `iteration_range=(0, best_iteration + 1)` (`best_iteration` is in `../training/outputs/13_<tag>_best.json`).
+
 ```python
 import gzip, xgboost as xgb
 m = xgb.XGBClassifier()

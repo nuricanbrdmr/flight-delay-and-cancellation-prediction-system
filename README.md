@@ -7,6 +7,7 @@ The repository contains three parts:
 | Folder | Content |
 |---|---|
 | `model-api/training/` | The experiments: data rebuild, leakage-controlled features, model training and validation-based tuning, one-shot test evaluation, tables and figures of the article. |
+| `model-api/trained_models/` | The eight final XGBoost models behind the results of the article (Mode A and B, gzip-compressed JSON, about 60 MB in total). |
 | `model-api/` | The model API of the prototype (`cancel_delay_api.py`, Flask), the exported Mode-A models (`models_v2/`) and tests (`tests/`). See [`model-api/README.md`](model-api/README.md). |
 | `bitirme-backend/`, `bitirme-frontend/` | The SmartTicket web prototype (Node.js/Express back end, React/Vite front end). The article describes it as a technical-feasibility prototype that has not been evaluated with users. |
 | `Proje raporu/` | The article manuscripts (English and Turkish) and earlier project reports. |
@@ -39,6 +40,7 @@ into `csv/`. Weather is downloaded from Meteostat by the first script. Run from 
 | 3 | `python -I model-api/training/12_features_v2.py` | history features (self-tested for leakage) |
 | 4 | `python -I model-api/training/15_live_features.py` | Mode-B same-day features on an absolute (UTC) time axis (self-tested for leakage) |
 | 5 | `python -I model-api/training/13_train_task.py {cancel\|code\|delay\|delayacc} {A\|B}` | ablation, random search on the validation period, final fit (`csv/models_v2/`, `outputs/13_*`) |
+| 5b | `python -I model-api/training/21_unpack_trained_models.py` | optional shortcut: unpacks the final models of the article from `model-api/trained_models/` (the long training of step 5 can then be skipped) |
 | 6 | `python -I model-api/training/14_test_report.py` | one-shot test evaluation, bootstrap intervals, SHAP, VIF (`outputs/14_*`) |
 | 7 | `python -I model-api/training/19_test_breakdown_calibration.py` (2023 vs 2024-01, Brier score, calibration), `18_baselines.py`, `17_extra_figures.py`, `18b_descriptive_figures.py`, `16_make_paper_tables.py` | comparison algorithms, figures, tables (`docs/PAPER_TABLES.md`) |
 | 8 | `python -I model-api/training/20_export_api_artifacts.py` | exports the Mode-A models and look-up tables used by the API |
