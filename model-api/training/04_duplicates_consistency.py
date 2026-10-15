@@ -1,4 +1,4 @@
-"""Roadmap step 2: duplicate report; plus label consistency in the sources and final-vs-source row matching."""
+"""Step 2: duplicate report; plus label consistency in the sources and final-vs-source row matching."""
 import pandas as pd
 from pathlib import Path
 D = Path(__file__).resolve().parents[2] / "csv"
@@ -12,16 +12,16 @@ print(pd.crosstab(s.CANCELLED, s.CANCELLATION_CODE.notna()))
 print("diverted:", int((s.DIVERTED == 1).sum()), "| cancelled&diverted:", int(((s.DIVERTED==1)&(s.CANCELLED==1)).sum()))
 k_full = ["FL_DATE","DOT_CODE","FL_NUMBER","ORIGIN","DEST","CRS_DEP_TIME"]
 dup_full = s.duplicated(k_full, keep=False)
-print(f"\n== sample_3m duplicates on roadmap key {k_full}: rows in dup groups={int(dup_full.sum())}, extra copies={int(s.duplicated(k_full).sum())}")
+print(f"\n== sample_3m duplicates on the full key {k_full}: rows in dup groups={int(dup_full.sum())}, extra copies={int(s.duplicated(k_full).sum())}")
 
 k_red = ["FL_DATE","AIRLINE_CODE","ORIGIN_CITY","DEST_CITY","CRS_DEP_TIME"]
 rep = []
-rep.append(("sample_3m", "full roadmap key", len(s), int(s.duplicated(k_full).sum())))
+rep.append(("sample_3m", "full key", len(s), int(s.duplicated(k_full).sum())))
 rep.append(("sample_3m", "reduced key (no FL_NUMBER/airport code)", len(s), int(s.duplicated(k_red).sum())))
 
 x = pd.read_csv(D / "flight_data_2018_2024.csv", usecols=["FlightDate","IATA_Code_Operating_Airline","DOT_ID_Operating_Airline","Flight_Number_Operating_Airline","Origin","Dest","CRSDepTime","Cancelled","CancellationCode","Duplicate"])
 kx = ["FlightDate","DOT_ID_Operating_Airline","Flight_Number_Operating_Airline","Origin","Dest","CRSDepTime"]
-rep.append(("flight_data_2018_2024", "full roadmap key", len(x), int(x.duplicated(kx).sum())))
+rep.append(("flight_data_2018_2024", "full key", len(x), int(x.duplicated(kx).sum())))
 print("\n== flight_data_2018_2024: own 'Duplicate' column ->", x.Duplicate.value_counts(dropna=False).to_dict())
 print("   cancelled x code:"); print(pd.crosstab(x.Cancelled, x.CancellationCode.fillna("NaN")))
 

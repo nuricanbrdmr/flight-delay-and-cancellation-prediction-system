@@ -1,152 +1,71 @@
-# SmartTicket (FCDP-SFTS AI Model Web Uygulaması)
+# SmartTicket: flight cancellation, cancellation-cause and departure-delay risk
 
-## Proje Tanımı
-SmartTicket, uçuş iptal ve gecikme tahminleri sunan, modern ve kullanıcı dostu bir web uygulamasıdır. Kullanıcılar, uçuş araması yaparak seçtikleri biletin iptal ve gecikme risklerini, yapay zeka destekli modelden anlık olarak görebilirler. Model, uçuşun iptal olma ve gecikme olasılıklarını, güven oranı ile birlikte detaylı şekilde sunar.
+Code, trained models and prototype that accompany the article *Predicting Flight Cancellations, Cancellation Causes and Departure Delays from Historical, Meteorological and Same-Day Operational Data, with a Smart Ticketing Prototype* (E. N. Mutlu, N. C. Birdemir, E. E. Ülkü; Marmara University).
 
-## Ana Klasör ve Dosya Yapısı
-```
-SmartTicket/
-│
-├── bitirme-frontend/      # React tabanlı web arayüzü
-│   └── src/
-│       └── components/    # Ana React bileşenleri (Ticket, Travel, Navbar, vs.)
-│       └── api/           # API istekleri
-│       └── ...
-│
-├── bitirme-backend/       # Node.js/Express tabanlı API sunucusu
-│   └── controllers/       # Uçuş, lokasyon, kullanıcı controller dosyaları
-│   └── routes/            # API endpoint tanımları
-│   └── models/            # Kullanıcı modeli
-│   └── constant/          # Şehir/havalimanı sabit verileri
-│   └── ...
-│
-├── model-api/             # Python tabanlı AI model ve API
-│   ├── cancel_delay_api.py  # Ana API dosyası (Flask/FastAPI)
-│   ├── delay_model.py       # Gecikme tahmin modeli kodu
-│   ├── cancel_model.py      # İptal tahmin modeli kodu
-│   ├── requirements.txt     # Python bağımlılıkları
-│   └── models/              # Eğitilmiş model dosyaları (.joblib)
-│
-└── README.md              # Proje dökümantasyonu
-```
+The repository contains three parts:
 
-## Kullanılan Teknolojiler
-- **Frontend:** React.js, Tailwind CSS, Ant Design, Framer Motion, React Icons
-- **Backend:** Node.js, Express.js
-- **Model API:** Python (Flask veya FastAPI), scikit-learn, joblib
-- **Diğer:** Axios (API istekleri için)
+| Folder | Content |
+|---|---|
+| `model-api/training/` | The experiments: data rebuild, leakage-controlled features, model training and validation-based tuning, one-shot test evaluation, tables and figures of the article. |
+| `model-api/` | The model API of the prototype (`cancel_delay_api.py`, Flask), the exported Mode-A models (`models_v2/`) and tests (`tests/`). See [`model-api/README.md`](model-api/README.md). |
+| `bitirme-backend/`, `bitirme-frontend/` | The SmartTicket web prototype (Node.js/Express back end, React/Vite front end). The article describes it as a technical-feasibility prototype that has not been evaluated with users. |
+| `Proje raporu/` | The article manuscripts (English and Turkish) and earlier project reports. |
 
-## Kurulum
-### 1. Model API (model-api)
+## What the models predict
+
+Three related tasks on U.S. domestic flights (Zelaya sample 2019-01 to 2023-08 plus the complete month 2024-01 of Singh; both from the DOT/BTS on-time data):
+
+1. flight cancellation (binary, all flights);
+2. cancellation cause (DOT classes A carrier, B weather, C national air system) for cancelled flights;
+3. departure-delay class (<=0, 1-15, 16-30, >30 minutes) for operated flights.
+
+Inputs are calendar and schedule data, the weather of the previous completed day at the origin and destination airport (Meteostat station observations, *not* forecasts), recent cancellation and delay rates (previous day / previous seven days) and, in the optional day-of-departure **Mode B**, the operational state observed three hours before the scheduled departure (requires a live data feed). **Mode A** uses information up to the previous day only and is the only mode that is valid for tickets bought in advance.
+
+The protocol is chronological: training 2019-01 to 2022-06, validation 2022-07 to 2022-12 (hyper-parameter search and decision thresholds), test 2023-01 to 2023-08 and 2024-01 (used once). The data keep their natural class distribution. The outputs are risk indicators, not precise forecasts; results are reported in the article.
+
+## Reproducing the experiments
+
+Requirements: Python 3.10+, `pip install -r model-api/training/requirements.txt`. The data are not part of the repository (`csv/` is git-ignored). Download
+
+* `flights_sample_3m_origin.csv`: Zelaya (2023), <https://www.kaggle.com/datasets/patrickzel/flight-delay-and-cancellation-dataset-2019-2023>
+* `flight_data_2018_2024.csv`: Singh (2024), <https://www.kaggle.com/datasets/shubhamsingh42/flight-delay-dataset-2018-2024>
+
+into `csv/`. Weather is downloaded from Meteostat by the first script. Run from the repository root:
+
+| Step | Script | Result |
+|---|---|---|
+| 1 | `python -I model-api/training/07_fetch_weather.py` | daily station observations per origin airport |
+| 2 | `python -I model-api/training/08_build_dataset.py` | `csv/clean_flights.csv.gz` (de-duplicated, pre-departure fields only, D-1 weather) |
+| 3 | `python -I model-api/training/12_features_v2.py` | history features (self-tested for leakage) |
+| 4 | `python -I model-api/training/15_live_features.py` | Mode-B same-day features (self-tested for leakage) |
+| 5 | `python -I model-api/training/13_train_task.py {cancel\|code\|delay\|delayacc} {A\|B}` | ablation, random search on the validation period, final fit (`csv/models_v2/`, `outputs/13_*`) |
+| 6 | `python -I model-api/training/14_test_report.py` | one-shot test evaluation, bootstrap intervals, SHAP, VIF (`outputs/14_*`) |
+| 7 | `python -I model-api/training/18_baselines.py`, `17_extra_figures.py`, `18b_descriptive_figures.py`, `16_make_paper_tables.py` | comparison algorithms, figures, tables (`docs/PAPER_TABLES.md`) |
+| 8 | `python -I model-api/training/20_export_api_artifacts.py` | exports the Mode-A models and look-up tables used by the API |
+
+Scripts `00`-`06`, `09`, `11` document the data checks (sources, duplicates, class distributions, leakage table, balancing experiment). Random seeds are fixed (42 for XGBoost and SMOTE-NC, 7 for the random search, 0 for subsamples, 123 for the bootstrap).
+
+## Running the prototype
+
 ```bash
-cd model-api
-pip install -r requirements.txt
-python cancel_delay_api.py
+# 1. model API (http://127.0.0.1:5050)
+cd model-api && pip install -r requirements.txt && python cancel_delay_api.py
+
+# 2. back end: copy bitirme-backend/.env.example to .env and fill it in (never commit .env)
+cd bitirme-backend && npm install && npm start
+
+# 3. front end (http://localhost:5173)
+cd bitirme-frontend && npm install && npm run dev
 ```
 
-### 2. Backend (bitirme-backend)
-```bash
-cd bitirme-backend
-npm install
-```
+The flight search uses an external flight-search service (RapidAPI key in `.env`); the model API works on its own (see `model-api/README.md`). Tests of the model API: `cd model-api && python -m unittest discover -s tests -v`.
 
-#### Ortam Değişkenleri
-Aşağıdaki değişkenleri içeren `bitirme-backend` dizininde bir `.env` dosyası oluşturun:
-```env
-# Database
-MONGODB_URI=your_mongodb_connection_string
+![Search form](model-api/training/outputs/figures/smartticket_home.png)
 
-# JWT Authentication
-JWT_SECRET_KEY=your_jwt_secret_key
-JWT_REFRESH_SECRET_KEY=your_jwt_refresh_secret_key
-JWT_EXPIRES_TIME=24h
+## Limitations (see the article)
 
-# Email Configuration
-NODE_USER=your_email_address
-NODE_PASS=your_email_password
-```
+The prototype shows model-based risk indications only for dates covered by its look-up tables; for other dates, missing inputs are reported as warnings and neutral training averages are used. There has been no user study, and no load, scalability or security testing beyond what the article reports.
 
-Ardından sunucuyu başlatın:
-```bash
-node server.js
-```
+## License
 
-### 3. Frontend (bitirme-frontend)
-```bash
-cd bitirme-frontend
-npm install
-npm install framer-motion antd react-icons axios
-npm start
-```
-
-## Kullanım
-1. Model API'yi başlatın (model-api klasöründe):
-   ```bash
-   python cancel_delay_api.py
-   ```
-2. Backend'i başlatın (bitirme-backend klasöründe):
-   ```bash
-   node server.js
-   ```
-3. Frontend'i başlatın (bitirme-frontend klasöründe):
-   ```bash
-   npm start
-   ```
-4. Tarayıcıda `http://localhost:5173` adresine gidin.
-
-## Ana Özellikler
-- **Uçuş Arama:** Kalkış/varış şehirleri ve tarih seçimiyle uçuş arama
-- **Bilet Kartı:** Havayolu, saatler, fiyat ve model tahminleri
-- **AI Model Tahmin Detayları:**
-  - Sadece "FCDP-SFTS AI Model Tahmin Detayları" etiketine tıklanınca açılır
-  - Açılış/kapanış animasyonludur (framer-motion)
-  - İptal olasılığı kırmızı, olmama olasılığı yeşil Progress bar ile gösterilir
-  - Gecikme tahminlerinde "Zamanında veya erken" yeşil, diğerleri kırmızı Progress bar ile gösterilir
-  - Modelin uyguladığı düzeltmeler ve güven oranı detaylı şekilde sunulur
-- **Modern UI:** Ant Design, Tailwind ve animasyonlarla zenginleştirilmiş kullanıcı deneyimi
-
-## model-api Hakkında
-- **cancel_delay_api.py:** Ana API dosyası, uçuş iptal ve gecikme tahminlerini sunar
-- **delay_model.py & cancel_model.py:** Model tahmin fonksiyonları
-- **models/**: Eğitilmiş scikit-learn modelleri (.joblib)
-- **requirements.txt:** Gerekli Python paketleri
-
-## Ekran Görüntüsü
-![Ekran görüntüsü 2025-06-08 105440](https://github.com/user-attachments/assets/c30db0cc-60bc-4854-92a5-7f10a670ae33)
-Şekil 1: SmartTicket ana arayüzü. Kullanıcılar kalkış ve varış şehirlerini seçerek uçuş sorgusu yapabilir. Seçilen tarihe göre yapay zeka tahminleri entegre şekilde listelenir.
-
-![Ekran görüntüsü 2025-06-08 110027](https://github.com/user-attachments/assets/0db2a133-497d-416c-932d-848f38f8a5bd)
-Şekil 2: Arama sonucunda listelenen uçuş biletleri. Her bilet kartında uçuş bilgileri ve genel risk özeti sunulmaktadır.
-
-![Ekran görüntüsü 2025-06-08 110415](https://github.com/user-attachments/assets/90854376-307d-41b3-8276-38f200c85002)
-Şekil 3: Tahmin detay paneli. İptal ve gecikme olasılıkları, görsel barlar ile kullanıcıya sunulmakta; modelin güven oranı ve açıklamaları ile birlikte gösterilmektedir.
-
-![ChatGPT Image 8 Haz 2025 11_30_45](https://github.com/user-attachments/assets/228a9980-0784-4172-83b3-e29673f68c4f)
-Şekil 4: SmartTicket sistem mimarisi. Kullanıcıdan gelen istekler frontend üzerinden backend’e, oradan da model API’ye yönlendirilmekte; sonuçlar aynı zincirle geri dönmektedir.
-
-## 📘 Proje Raporları
-
-### 🇹🇷 Türkçe Rapor
-Bitirme projesine ait detaylı teknik ve metodolojik açıklamaların yer aldığı Türkçe raporu bağlantıdan inceleyebilirsiniz:
-👉 [Rapor (TR)](https://github.com/user-attachments/files/20643533/Bitirme.pdf)
-
-### 🇬🇧 English Report
-The English version of the final project report with technical details and methodology can be accessed from the link below:
-👉 [Report (EN)](https://github.com/user-attachments/files/20643536/Bitirme.EN.pdf)
-
-## Geliştirme ve Özelleştirme Notları
-- Şehir ve havalimanı verileri backend API'den dinamik olarak çekilmektedir
-- Uçuşlar arası mesafe hesaplaması, havalimanı koordinatları API'den alınarak yapılır
-- Tüm tahminler ve oranlar, Python tabanlı model API'den alınır
-- Detay kutusu sadece ilgili etikete tıklanınca açılır ve animasyonludur
-- Kodda modern React ve fonksiyonel component yapısı kullanılmıştır
-
-## Katkı ve Lisans
-Katkıda bulunmak isterseniz lütfen bir pull request açın. Lisans bilgisi için projenin sahibine danışınız.
-
----
-
-## Poster
-![Poster](https://github.com/user-attachments/assets/e94b1759-be96-4697-8377-a12af1483565)
-
-**Hazırlayanlar:** Nuri Can Birdemir - Eda Nur Mutlu
+MIT, see `LICENSE`.

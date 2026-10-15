@@ -1,5 +1,5 @@
 rows: zelaya 3000000 | singh 582425 | total 3582425
-duplicates on roadmap key (dropped): 0
+duplicates on the full key (dropped): 0
 label consistency CANCELLED vs code:
  CANCELLATION_CODE    False   True 
 CANCELLED                         

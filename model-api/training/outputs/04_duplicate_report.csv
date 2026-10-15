@@ -1,7 +1,7 @@
 dataset,key,rows,duplicate_rows,share
-sample_3m,full roadmap key,1048575,0,0.0
+sample_3m,full key,1048575,0,0.0
 sample_3m,reduced key (no FL_NUMBER/airport code),1048575,48,5e-05
-flight_data_2018_2024,full roadmap key,582425,0,0.0
+flight_data_2018_2024,full key,582425,0,0.0
 Cancel_final,reduced key (no FL_NUMBER available),1446799,325170,0.22475
 Cancel_final,ALL columns identical,1446799,5,0.0
 Delay_final,reduced key (no FL_NUMBER available),2104853,1069066,0.50791

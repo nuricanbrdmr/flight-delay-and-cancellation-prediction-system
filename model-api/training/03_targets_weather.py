@@ -1,4 +1,4 @@
-"""Roadmap steps 3 and 5: target/class distributions per task + feasibility of D-1 weather from existing weather columns."""
+"""Steps 3 and 5: target/class distributions per task + feasibility of D-1 weather from existing weather columns."""
 import numpy as np, pandas as pd
 from pathlib import Path
 D = Path(__file__).resolve().parents[2] / "csv"

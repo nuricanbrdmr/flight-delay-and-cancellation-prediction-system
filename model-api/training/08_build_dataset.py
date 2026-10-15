@@ -1,6 +1,6 @@
 """Rebuild the base table from the raw sources (no model-specific encoding, no balancing).
  - Zelaya full 3M (2019-01..2023-08) + Singh Jan-2024 (natural: cancelled AND non-cancelled). The 2016 / 2024 cancelled-only rows of the old file are NOT used.
- - Dedup on the roadmap key. Weather: Meteostat daily at the origin airport, joined many-to-one on (ORIGIN, FL_DATE - 1 day) = D-1.
+ - Dedup on the full key. Weather: Meteostat daily at the origin airport, joined many-to-one on (ORIGIN, FL_DATE - 1 day) = D-1.
  - Only pre-departure fields + targets are kept. Post-event fields (DEP_TIME, TAXI_*, WHEELS_*, ARR_*, ELAPSED/AIR_TIME, DELAY_DUE_*) are dropped here.
 Output: csv/clean_flights.csv.gz (git-ignored) + outputs/08_build_report.txt"""
 import pandas as pd, numpy as np
@@ -27,7 +27,7 @@ for c in ["CRS_DEP_TIME","CRS_ARR_TIME","FL_NUMBER"]: x[c] = pd.to_numeric(x[c],
 x["SOURCE"] = "singh_2024_01"
 df = pd.concat([z, x[KEEP + ["SOURCE"]]], ignore_index=True)
 say("rows: zelaya", len(z), "| singh", len(x), "| total", len(df))
-n = df.duplicated(KEY).sum(); say("duplicates on roadmap key (dropped):", int(n)); df = df.drop_duplicates(KEY)
+n = df.duplicated(KEY).sum(); say("duplicates on the full key (dropped):", int(n)); df = df.drop_duplicates(KEY)
 df["CANCELLED"] = df.CANCELLED.astype(int); df["DIVERTED"] = df.DIVERTED.astype(int)
 say("label consistency CANCELLED vs code:\n", pd.crosstab(df.CANCELLED, df.CANCELLATION_CODE.notna()).to_string())
 

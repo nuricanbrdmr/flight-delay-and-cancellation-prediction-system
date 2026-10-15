@@ -1,4 +1,4 @@
-"""Full 3M Zelaya file: natural rates, duplicates on the roadmap key, label consistency, overlap with Singh (2024)."""
+"""Full 3M Zelaya file: natural rates, duplicates on the full key, label consistency, overlap with Singh (2024)."""
 import pandas as pd
 from pathlib import Path
 D = Path(__file__).resolve().parents[2] / "csv"
@@ -7,7 +7,7 @@ pd.set_option("display.width", 220)
 s = pd.read_csv(D / "flights_sample_3m_origin.csv", low_memory=False, parse_dates=["FL_DATE"])
 print("rows", len(s), s.FL_DATE.min().date(), s.FL_DATE.max().date())
 k = ["FL_DATE","DOT_CODE","FL_NUMBER","ORIGIN","DEST","CRS_DEP_TIME"]
-print("duplicates on roadmap key:", int(s.duplicated(k).sum()), "| fully identical rows:", int(s.duplicated().sum()))
+print("duplicates on the full key:", int(s.duplicated(k).sum()), "| fully identical rows:", int(s.duplicated().sum()))
 print("CANCELLED x has-code:"); print(pd.crosstab(s.CANCELLED, s.CANCELLATION_CODE.notna()))
 print("cancel codes:", s.CANCELLATION_CODE.value_counts().to_dict(), "| diverted:", int(s.DIVERTED.sum()))
 y = s.groupby(s.FL_DATE.dt.year).agg(rows=("CANCELLED","size"), cancelled=("CANCELLED","sum")); y["rate"] = (y.cancelled/y.rows).round(5)

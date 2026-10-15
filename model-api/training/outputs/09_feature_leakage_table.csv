@@ -12,8 +12,8 @@ DEP_DELAY,actual,NO - post-event,DROP,DROP,TARGET,delay-model target only
 DIVERTED,actual,NO - post-event,DROP,DROP,FILTER,used only to exclude diverted flights from the delay task
 CANCELLED / CANCELLATION_CODE,actual,NO - post-event,TARGET,TARGET,FILTER,targets / row filters only
 "D1_tmin, D1_tmax, D1_tavg, D1_prcp, D1_snow, D1_wspd, D1_pres","Meteostat daily, day D-1, origin airport",yes (completed previous day),keep,keep,keep,replaces same-day tmin..pres; NaN snow/prcp need an explicit rule
-"old same-day tmin,tmax,prcp,snow,wdir,wspd,wpgt,pres,tsun","Meteostat daily, day D",NO - look-ahead,DROP,DROP,DROP,reviewer R1-2; wdir/wpgt/tsun also >50% missing
-WEATHER_COMPOSITE,derived from weather,depends,DROP (candidate),DROP (candidate),DROP (candidate),"ad-hoc weights, no validation (R2-C); roadmap: drop unless formula+weights can be justified"
+"old same-day tmin,tmax,prcp,snow,wdir,wspd,wpgt,pres,tsun","Meteostat daily, day D",NO - look-ahead,DROP,DROP,DROP,same-day aggregates are only known after the day ends; wdir/wpgt/tsun also >50% missing
+WEATHER_COMPOSITE,derived from weather,depends,DROP (candidate),DROP (candidate),DROP (candidate),"ad-hoc weights without a validated formula: dropped"
 AIRLINE_RELIABILITY (old),target mean over ALL rows,NO - leakage,RECOMPUTE,RECOMPUTE,-,old code: groupby('AIR')['CANCELLED'].mean() on the full data incl. test years. New: only from rows before the flight date (expanding/lagged) or train-fit
 ROUTE_POPULARITY(_LOG) (old),count over ALL rows,NO - uses future volume,RECOMPUTE,RECOMPUTE,-,count of flights per route over the full data; new: train-only or lagged counts
 historical route performance / previous delays,derived,only if lagged,optional,optional,optional,must use strictly earlier flight dates

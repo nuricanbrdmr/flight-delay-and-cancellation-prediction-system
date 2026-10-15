@@ -1,4 +1,4 @@
-"""Roadmap step 1: per-source summary (date range, rows, cancelled/non-cancelled, rate) + per-year cancel rate."""
+"""Step 1: per-source summary (date range, rows, cancelled/non-cancelled, rate) + per-year cancel rate."""
 import pandas as pd
 from pathlib import Path
 D = Path(__file__).resolve().parents[2] / "csv"
