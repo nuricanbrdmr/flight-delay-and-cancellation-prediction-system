@@ -42,9 +42,9 @@
 | Feature set (Mode B) | PR-AUC | ROC-AUC |
 |---|---|---|
 | C_full (B+holiday+dest weather) | 0.207 | 0.804 |
-| G_full+live (day-of-departure, T-3h) | 0.283 | 0.862 |
-| H_full+live_no_weather | 0.282 | 0.862 |
-| I_cal+sched+live_only | 0.238 | 0.838 |
+| G_full+live (day-of-departure, T-3h) | 0.290 | 0.861 |
+| H_full+live_no_weather | 0.288 | 0.863 |
+| I_cal+sched+live_only | 0.242 | 0.847 |
 
 ### Table C3. Feature ablation, cancellation-cause model (validation period)
 
@@ -75,13 +75,13 @@
 | Task | Mode | Headline test metrics (95% bootstrap CI) | Further metrics | Reference baseline |
 |---|---|---|---|---|
 | Cancellation (binary) | A | PR-AUC 0.119 (0.116-0.122); ROC-AUC 0.800 (0.798-0.803) | P=0.169, R=0.179, F1=0.174; macro-F1=0.575; bal. acc.=0.577 | no-skill PR-AUC = prevalence = 0.0286; accuracy 0.951 (trivial all-negative: 0.971) |
-| Cancellation (binary) | B | PR-AUC 0.196 (0.191-0.200); ROC-AUC 0.857 (0.856-0.859) | P=0.209, R=0.368, F1=0.266; macro-F1=0.618; bal. acc.=0.664 | no-skill PR-AUC = prevalence = 0.0286; accuracy 0.942 (trivial all-negative: 0.971) |
+| Cancellation (binary) | B | PR-AUC 0.180 (0.177-0.184); ROC-AUC 0.849 (0.847-0.851) | P=0.222, R=0.319, F1=0.262; macro-F1=0.618; bal. acc.=0.643 | no-skill PR-AUC = prevalence = 0.0286; accuracy 0.949 (trivial all-negative: 0.971) |
 | Cancellation cause (A/B/C) | A | Accuracy 0.707 (0.701-0.712); macro-F1 0.541 (0.534-0.549) | balanced acc. 0.549; macro PR-AUC 0.635; macro ROC-AUC (OvR) 0.835 | majority-class baseline accuracy 0.602 ('B weather') |
-| Cancellation cause (A/B/C) | B | Accuracy 0.739 (0.734-0.743); macro-F1 0.569 (0.559-0.575) | balanced acc. 0.572; macro PR-AUC 0.647; macro ROC-AUC (OvR) 0.846 | majority-class baseline accuracy 0.602 ('B weather') |
+| Cancellation cause (A/B/C) | B | Accuracy 0.750 (0.745-0.755); macro-F1 0.573 (0.565-0.579) | balanced acc. 0.576; macro PR-AUC 0.649; macro ROC-AUC (OvR) 0.850 | majority-class baseline accuracy 0.602 ('B weather') |
 | Delay, 4 classes - accuracy-oriented (no class weights) | A | Accuracy 0.608 (0.607-0.609); macro-F1 0.269 (0.268-0.269) | balanced acc. 0.290; macro PR-AUC 0.358; macro ROC-AUC (OvR) 0.672 | majority-class baseline accuracy 0.600 ('<=0 min'); delay>15 min as binary: ROC-AUC 0.693, PR-AUC 0.386 (prevalence 0.222) |
-| Delay, 4 classes - accuracy-oriented (no class weights) | B | Accuracy 0.619 (0.618-0.620); macro-F1 0.299 (0.298-0.300) | balanced acc. 0.316; macro PR-AUC 0.380; macro ROC-AUC (OvR) 0.687 | majority-class baseline accuracy 0.600 ('<=0 min'); delay>15 min as binary: ROC-AUC 0.721, PR-AUC 0.446 (prevalence 0.222) |
+| Delay, 4 classes - accuracy-oriented (no class weights) | B | Accuracy 0.619 (0.618-0.620); macro-F1 0.300 (0.299-0.300) | balanced acc. 0.316; macro PR-AUC 0.380; macro ROC-AUC (OvR) 0.687 | majority-class baseline accuracy 0.600 ('<=0 min'); delay>15 min as binary: ROC-AUC 0.721, PR-AUC 0.445 (prevalence 0.222) |
 | Delay, 4 classes - class-weighted | A | Accuracy 0.386 (0.385-0.387); macro-F1 0.318 (0.317-0.318) | balanced acc. 0.356; macro PR-AUC 0.335; macro ROC-AUC (OvR) 0.645 | majority-class baseline accuracy 0.600 ('<=0 min'); delay>15 min as binary: ROC-AUC 0.679, PR-AUC 0.370 (prevalence 0.222) |
-| Delay, 4 classes - class-weighted | B | Accuracy 0.421 (0.421-0.422); macro-F1 0.340 (0.339-0.341) | balanced acc. 0.375; macro PR-AUC 0.357; macro ROC-AUC (OvR) 0.660 | majority-class baseline accuracy 0.600 ('<=0 min'); delay>15 min as binary: ROC-AUC 0.709, PR-AUC 0.432 (prevalence 0.222) |
+| Delay, 4 classes - class-weighted | B | Accuracy 0.419 (0.418-0.420); macro-F1 0.340 (0.339-0.341) | balanced acc. 0.375; macro PR-AUC 0.358; macro ROC-AUC (OvR) 0.661 | majority-class baseline accuracy 0.600 ('<=0 min'); delay>15 min as binary: ROC-AUC 0.709, PR-AUC 0.432 (prevalence 0.222) |
 
 *Mode A: information available up to the previous completed day (D-1). Mode B: Mode A + operational state of the same day observed 3 hours before scheduled departure (delays/cancellations of earlier flights at the origin and of the airline, share of scheduled-but-not-yet-departed flights). 56% of the test rows belong to 2024-01 (complete month), see Table G.*
 
@@ -89,17 +89,17 @@
 
 | Model | Class | Support | Precision | Recall | F1 |
 |---|---|---|---|---|---|
-| code_B | A carrier | 10061 | 0.632 | 0.850 | 0.725 |
-| code_B | B weather | 17961 | 0.842 | 0.739 | 0.788 |
-| code_B | C NAS | 1833 | 0.408 | 0.128 | 0.194 |
-| delayacc_B | <=0 min | 607707 | 0.647 | 0.952 | 0.770 |
-| delayacc_B | 1-15 min | 180379 | 0.349 | 0.067 | 0.113 |
-| delayacc_B | 16-30 min | 74115 | 0.139 | 0.000 | 0.000 |
-| delayacc_B | >30 min | 150928 | 0.439 | 0.243 | 0.313 |
-| delay_B | <=0 min | 607707 | 0.778 | 0.460 | 0.578 |
-| delay_B | 1-15 min | 180379 | 0.242 | 0.323 | 0.277 |
-| delay_B | 16-30 min | 74115 | 0.114 | 0.248 | 0.156 |
-| delay_B | >30 min | 150928 | 0.280 | 0.469 | 0.351 |
+| code_B | A carrier | 10061 | 0.650 | 0.849 | 0.736 |
+| code_B | B weather | 17961 | 0.844 | 0.758 | 0.799 |
+| code_B | C NAS | 1833 | 0.370 | 0.122 | 0.183 |
+| delayacc_B | <=0 min | 607707 | 0.647 | 0.951 | 0.770 |
+| delayacc_B | 1-15 min | 180379 | 0.348 | 0.068 | 0.113 |
+| delayacc_B | 16-30 min | 74115 | 0.204 | 0.000 | 0.001 |
+| delayacc_B | >30 min | 150928 | 0.437 | 0.246 | 0.315 |
+| delay_B | <=0 min | 607707 | 0.780 | 0.455 | 0.575 |
+| delay_B | 1-15 min | 180379 | 0.241 | 0.327 | 0.278 |
+| delay_B | 16-30 min | 74115 | 0.115 | 0.251 | 0.158 |
+| delay_B | >30 min | 150928 | 0.279 | 0.467 | 0.350 |
 
 *delayacc_B = no class weights (accuracy-oriented); delay_B = balanced class weights (macro-F1-oriented). Class 16-30 min is never predicted by the unweighted model.*
 
@@ -107,15 +107,15 @@
 
 | month | n | prevalence | pr_auc (A) | pr_auc (B) | roc_auc (A) | roc_auc (B) |
 |---|---|---|---|---|---|---|
-| 2023-01 | 55321 | 0.0198 | 0.0742 | 0.1475 | 0.7467 | 0.8257 |
-| 2023-02 | 51026 | 0.0192 | 0.2201 | 0.2750 | 0.8101 | 0.8745 |
-| 2023-03 | 59009 | 0.0129 | 0.0235 | 0.0814 | 0.6203 | 0.7399 |
-| 2023-04 | 57289 | 0.0179 | 0.0588 | 0.1184 | 0.7191 | 0.7623 |
-| 2023-05 | 59447 | 0.0055 | 0.0125 | 0.0256 | 0.6241 | 0.7015 |
-| 2023-06 | 58668 | 0.0207 | 0.1705 | 0.2156 | 0.8307 | 0.8468 |
-| 2023-07 | 61270 | 0.0244 | 0.0768 | 0.1910 | 0.7660 | 0.8032 |
-| 2023-08 | 61454 | 0.0148 | 0.0342 | 0.0950 | 0.6595 | 0.7638 |
-| 2024-01 | 582425 | 0.0379 | 0.1285 | 0.2110 | 0.7966 | 0.8580 |
+| 2023-01 | 55321 | 0.0198 | 0.0742 | 0.1325 | 0.7467 | 0.8155 |
+| 2023-02 | 51026 | 0.0192 | 0.2201 | 0.2280 | 0.8101 | 0.8603 |
+| 2023-03 | 59009 | 0.0129 | 0.0235 | 0.0701 | 0.6203 | 0.7212 |
+| 2023-04 | 57289 | 0.0179 | 0.0588 | 0.1070 | 0.7191 | 0.7570 |
+| 2023-05 | 59447 | 0.0055 | 0.0125 | 0.0196 | 0.6241 | 0.6637 |
+| 2023-06 | 58668 | 0.0207 | 0.1705 | 0.2133 | 0.8307 | 0.8366 |
+| 2023-07 | 61270 | 0.0244 | 0.0768 | 0.1572 | 0.7660 | 0.7852 |
+| 2023-08 | 61454 | 0.0148 | 0.0342 | 0.0848 | 0.6595 | 0.7453 |
+| 2024-01 | 582425 | 0.0379 | 0.1285 | 0.1948 | 0.7966 | 0.8523 |
 
 *Performance varies strongly between months; cancellations are dominated by few storm days.*
 
@@ -123,11 +123,11 @@
 
 | Cost ratio FN:FP | Threshold (from validation) | Alert rate | Recall | Precision | Cost per 1000 flights (FP=1 unit) | Saving vs. no alerts (%) |
 |---|---|---|---|---|---|---|
-| 2 | 0.298 | 0.016 | 0.172 | 0.300 | 58.770 | -2.860 |
-| 5 | 0.143 | 0.057 | 0.396 | 0.200 | 131.590 | 7.880 |
-| 10 | 0.084 | 0.105 | 0.562 | 0.153 | 214.220 | 25.020 |
-| 20 | 0.043 | 0.183 | 0.723 | 0.113 | 320.970 | 43.830 |
-| 50 | 0.018 | 0.324 | 0.859 | 0.076 | 500.850 | 64.940 |
+| 2 | 0.901 | 0.015 | 0.156 | 0.294 | 58.930 | -3.130 |
+| 5 | 0.843 | 0.048 | 0.354 | 0.210 | 130.330 | 8.770 |
+| 10 | 0.726 | 0.115 | 0.585 | 0.145 | 217.160 | 23.990 |
+| 20 | 0.617 | 0.176 | 0.700 | 0.114 | 327.640 | 42.660 |
+| 50 | 0.393 | 0.314 | 0.836 | 0.076 | 525.090 | 63.240 |
 
 *Relative cost units (false alarm = 1, missed cancellation = ratio). Thresholds minimise validation cost. Negative/zero saving at low ratios shows that alerts only pay off when a missed cancellation is much costlier than a false alarm. No monetary or annual-benefit claim is made.*
 
@@ -135,9 +135,9 @@
 
 | Model | learning_rate | max_depth | min_child_weight | subsample | colsample_bytree | lambda | alpha | gamma | class weights | trees |
 |---|---|---|---|---|---|---|---|---|---|---|
-| cancel_B | 0.041 | 4 | 2 | 0.796 | 0.686 | 2.909 | 0.500 | 0.500 | none | 237 |
-| code_B | 0.082 | 5 | 6 | 0.888 | 0.923 | 0.930 | 3.000 | 1.000 | none | 115 |
-| delayacc_B | 0.053 | 5 | 30 | 0.907 | 0.657 | 4.134 | 3.000 | 3.000 | none | 797 |
+| cancel_B | 0.059 | 4 | 7 | 0.872 | 0.902 | 2.038 | 1.000 | 3.000 | none | 78 |
+| code_B | 0.082 | 5 | 6 | 0.888 | 0.923 | 0.930 | 3.000 | 1.000 | none | 145 |
+| delayacc_B | 0.053 | 5 | 30 | 0.907 | 0.657 | 4.134 | 3.000 | 3.000 | none | 786 |
 | delay_B | 0.082 | 7 | 2 | 0.762 | 0.834 | 2.530 | 0.100 | 0.000 | balanced | 799 |
 
 *Search: 12 (cancellation), 20 (cause), 8 (delay; on a 700k-row random subsample of the training period) random configurations; bounds: learning_rate 0.03-0.15 (log), max_depth 4-10, min_child_weight 1-60 (log), subsample 0.6-1.0, colsample_bytree 0.5-1.0, lambda 0.5-20 (log), alpha {0,0.1,0.5,1,3}, gamma {0,0.5,1,3}, class-weight scheme; objective: validation PR-AUC (cancellation), macro-F1 (cause, weighted delay), accuracy (unweighted delay); early stopping on validation. The final model is refitted on all training rows.*
@@ -146,23 +146,23 @@
 
 | Feature | VIF |
 |---|---|
-| H_NAT_D7_DELAY15 | 152.9 |
-| H_NAT_D7_MEANDELAY | 151.4 |
+| H_NAT_D7_DELAY15 | 153.7 |
+| H_NAT_D7_MEANDELAY | 152.0 |
 | D1_tavg | 73.6 |
-| H_NAT_D1_DELAY15 | 65.3 |
-| H_NAT_D1_MEANDELAY | 60.5 |
+| H_NAT_D1_DELAY15 | 65.7 |
+| H_NAT_D1_MEANDELAY | 61.3 |
 | DOY_COS | 48.0 |
 | MONTH_COS | 47.3 |
 | MONTH_SIN | 46.4 |
 | DOY_SIN | 45.7 |
-| L_NAT_MEANDELAY | 27.8 |
+| H_AIR_D7_DELAY15 | 27.1 |
 
-*20 of 53 numeric features have VIF>10 and 27 feature pairs have |r|>=0.8 (see 14_high_correlation_pairs.csv, figures/correlation_matrix.png). High VIF arises from nested history aggregates (D-1 vs D-7, nation vs airport) and sine/cosine calendar encodings. Gradient-boosted trees are insensitive to collinearity for prediction, but SHAP attributions are shared among correlated features.*
+*21 of 53 numeric features have VIF>10 and 26 feature pairs have |r|>=0.8 (see 14_high_correlation_pairs.csv, figures/correlation_matrix.png). High VIF arises from nested history aggregates (D-1 vs D-7, nation vs airport) and sine/cosine calendar encodings. Gradient-boosted trees are insensitive to collinearity for prediction, but SHAP attributions are shared among correlated features.*
 
 ### Table K. Five most important features by mean absolute SHAP value (test sample of 30,000 rows)
 
 | Model | Top features (mean abs. SHAP) |
 |---|---|
-| cancel_B | L_AIR_CANCEL (0.483); H_AIR_D1_CANCEL (0.411); H_AIR_D7_CANCEL (0.256); DEST (0.219); L_NAT_CANCEL (0.195) |
-| code_B | AIRLINE_CODE (0.407); ORIGIN (0.145); DEST (0.143); H_AIR_D7_CANCEL (0.138); DOY_COS (0.137) |
-| delayacc_B | AIRLINE_CODE (0.129); CRS_DEP_MIN (0.115); ORIGIN (0.089); DEST (0.073); H_AIR_D7_DELAY15 (0.056) |
+| cancel_B | L_AIR_CANCEL (0.631); H_AIR_D1_CANCEL (0.381); L_NAT_CANCEL (0.225); H_AIR_D7_CANCEL (0.216); DEST (0.214) |
+| code_B | AIRLINE_CODE (0.425); H_AIR_D7_CANCEL (0.149); DEST (0.149); ORIGIN (0.146); DOY_COS (0.131) |
+| delayacc_B | AIRLINE_CODE (0.127); CRS_DEP_MIN (0.122); ORIGIN (0.090); DEST (0.073); CRS_ARR_MIN (0.058) |

@@ -14,7 +14,7 @@
  },
  "weight_mode": "none",
  "scale_pos_weight": 1.0,
- "best_iteration": 115,
+ "best_iteration": 145,
  "features": [
   "MONTH_SIN",
   "MONTH_COS",
@@ -74,11 +74,11 @@
   "DEST"
  ],
  "val_metrics": {
-  "macro_f1": 0.6444018295857622,
-  "accuracy": 0.6941238891099615,
-  "bal_acc": 0.6420079417344419,
-  "macro_pr_auc": 0.7059259177048519,
-  "logloss": 0.6887233389751825
+  "macro_f1": 0.6497760041408236,
+  "accuracy": 0.7026130786576469,
+  "bal_acc": 0.6468883057440747,
+  "macro_pr_auc": 0.7057889291126601,
+  "logloss": 0.6826017548888157
  },
  "search_subsample": null,
  "n_search": 20

@@ -10,7 +10,7 @@
     "recall": 0.15086004952814402,
     "accuracy": 0.9528438898603989,
     "f1": 0.15455028541063134,
-    "seconds": 8,
+    "seconds": 6,
     "n_train": 1000000
    },
    "Decision Tree": {
@@ -34,7 +34,7 @@
     "recall": 0.11391473127635365,
     "accuracy": 0.9600663155207575,
     "f1": 0.14015440041173444,
-    "seconds": 38,
+    "seconds": 36,
     "n_train": 1000000
    },
    "Gradient Boosting (HistGB)": {
@@ -46,57 +46,57 @@
     "recall": 0.12596211766280704,
     "accuracy": 0.9544836118629824,
     "f1": 0.1365400660209671,
-    "seconds": 33,
+    "seconds": 30,
     "n_train": 1000000
    }
   },
   "B": {
    "Logistic Regression": {
-    "pr_auc": 0.14030014003780467,
-    "roc_auc": 0.8059935737918474,
-    "val_pr_auc": 0.25894018652014483,
-    "threshold": 0.15053215251030042,
-    "precision": 0.1818775662560657,
-    "recall": 0.2608928451910849,
-    "accuracy": 0.9453547105914568,
-    "f1": 0.2143348087867374,
-    "seconds": 9,
+    "pr_auc": 0.13951327370773087,
+    "roc_auc": 0.8071350178374743,
+    "val_pr_auc": 0.26303473807809963,
+    "threshold": 0.1602701468231037,
+    "precision": 0.18317012125482954,
+    "recall": 0.25225888494746,
+    "accuracy": 0.9464972574095835,
+    "f1": 0.21223340606743155,
+    "seconds": 7,
     "n_train": 1000000
    },
    "Decision Tree": {
-    "pr_auc": 0.16417366640831538,
-    "roc_auc": 0.8192613652565197,
-    "val_pr_auc": 0.20049339093870513,
-    "threshold": 0.12380952380952381,
-    "precision": 0.16052780492823704,
-    "recall": 0.41770965798808646,
-    "accuracy": 0.9209548823081166,
-    "f1": 0.23192552815920028,
-    "seconds": 52,
+    "pr_auc": 0.16514004571931473,
+    "roc_auc": 0.8169508205088539,
+    "val_pr_auc": 0.22442256941340938,
+    "threshold": 0.19166666666666668,
+    "precision": 0.19215938303341903,
+    "recall": 0.2801686634094103,
+    "accuracy": 0.9457830461349888,
+    "f1": 0.2279646017699115,
+    "seconds": 40,
     "n_train": 1000000
    },
    "Random Forest": {
-    "pr_auc": 0.18642699957303824,
-    "roc_auc": 0.847182119934376,
-    "val_pr_auc": 0.27339155959189465,
-    "threshold": 0.17592333169245586,
-    "precision": 0.2351973217578801,
-    "recall": 0.27742453651027377,
-    "accuracy": 0.9535820037880924,
-    "f1": 0.2545716961722121,
-    "seconds": 51,
+    "pr_auc": 0.18767215755737585,
+    "roc_auc": 0.8465030884753381,
+    "val_pr_auc": 0.2802851931315253,
+    "threshold": 0.17108903453132623,
+    "precision": 0.23241344168208758,
+    "recall": 0.2900073622916806,
+    "accuracy": 0.952350539100438,
+    "f1": 0.2580357009930176,
+    "seconds": 44,
     "n_train": 1000000
    },
    "Gradient Boosting (HistGB)": {
-    "pr_auc": 0.19246929322812922,
-    "roc_auc": 0.8543992309296783,
-    "val_pr_auc": 0.28376009056684515,
-    "threshold": 0.17130451747358563,
-    "precision": 0.22049159826280726,
-    "recall": 0.3245097383039957,
-    "accuracy": 0.9479237677465248,
-    "f1": 0.2625742949594509,
-    "seconds": 36,
+    "pr_auc": 0.17285795028159234,
+    "roc_auc": 0.8473647790473618,
+    "val_pr_auc": 0.292634887030774,
+    "threshold": 0.1833735468617171,
+    "precision": 0.21673952236299424,
+    "recall": 0.2936885081319858,
+    "accuracy": 0.9494975184265553,
+    "f1": 0.24941383769343353,
+    "seconds": 32,
     "n_train": 1000000
    }
   }
@@ -136,45 +136,45 @@
     "balanced_accuracy": 0.5106962252486534,
     "macro_roc_auc_ovr": 0.7782255483226583,
     "val_accuracy": 0.6121501525401247,
-    "seconds": 5,
+    "seconds": 3,
     "n_train": 39402
    }
   },
   "B": {
    "Logistic Regression": {
-    "accuracy": 0.7735387707251716,
-    "macro_f1": 0.5889299732576098,
-    "balanced_accuracy": 0.5750854312283836,
-    "macro_roc_auc_ovr": 0.8538149900533054,
-    "val_accuracy": 0.6695848255736835,
+    "accuracy": 0.7734382850443812,
+    "macro_f1": 0.5918484938428779,
+    "balanced_accuracy": 0.5782977955987089,
+    "macro_roc_auc_ovr": 0.8539175769418098,
+    "val_accuracy": 0.675155856214352,
     "seconds": 1,
     "n_train": 39402
    },
    "Decision Tree": {
-    "accuracy": 0.5470440462234132,
-    "macro_f1": 0.4063995450068587,
-    "balanced_accuracy": 0.40532580470828766,
-    "macro_roc_auc_ovr": 0.620609523045844,
-    "val_accuracy": 0.6267409470752089,
+    "accuracy": 0.5667392396583487,
+    "macro_f1": 0.429866865845258,
+    "balanced_accuracy": 0.42062466103624513,
+    "macro_roc_auc_ovr": 0.6500861546119613,
+    "val_accuracy": 0.6339037007560684,
     "seconds": 1,
     "n_train": 39402
    },
    "Random Forest": {
-    "accuracy": 0.6494389549489198,
-    "macro_f1": 0.43689833058276806,
-    "balanced_accuracy": 0.4501769437157223,
-    "macro_roc_auc_ovr": 0.7370827969321271,
-    "val_accuracy": 0.6641464385196976,
+    "accuracy": 0.6611622843744767,
+    "macro_f1": 0.442033631498711,
+    "balanced_accuracy": 0.45214943517191175,
+    "macro_roc_auc_ovr": 0.7417262555227401,
+    "val_accuracy": 0.6601671309192201,
     "seconds": 1,
     "n_train": 39402
    },
    "Gradient Boosting (HistGB)": {
-    "accuracy": 0.6710098810919444,
-    "macro_f1": 0.5078220716135508,
-    "balanced_accuracy": 0.521454726346587,
-    "macro_roc_auc_ovr": 0.7887665821405486,
-    "val_accuracy": 0.6344342751027988,
-    "seconds": 5,
+    "accuracy": 0.6855468095796349,
+    "macro_f1": 0.516986649345549,
+    "balanced_accuracy": 0.5302609950169596,
+    "macro_roc_auc_ovr": 0.8027063584823568,
+    "val_accuracy": 0.6451784056240881,
+    "seconds": 4,
     "n_train": 39402
    }
   }
@@ -188,7 +188,7 @@
     "macro_roc_auc_ovr": 0.6529024324028463,
     "val_accuracy": 0.6218253433288983,
     "gt15_roc_auc": 0.6741062506768558,
-    "seconds": 16,
+    "seconds": 15,
     "n_train": 1000000
    },
    "Decision Tree": {
@@ -198,7 +198,7 @@
     "macro_roc_auc_ovr": 0.6418706080526722,
     "val_accuracy": 0.6213652269223781,
     "gt15_roc_auc": 0.6695714420235765,
-    "seconds": 33,
+    "seconds": 27,
     "n_train": 1000000
    },
    "Random Forest": {
@@ -208,7 +208,7 @@
     "macro_roc_auc_ovr": 0.6579721251061705,
     "val_accuracy": 0.6227719522416754,
     "gt15_roc_auc": 0.6857634722214689,
-    "seconds": 90,
+    "seconds": 30,
     "n_train": 1000000
    },
    "Gradient Boosting (HistGB)": {
@@ -218,49 +218,49 @@
     "macro_roc_auc_ovr": 0.6652724008227306,
     "val_accuracy": 0.6265847639925209,
     "gt15_roc_auc": 0.6881921197110257,
-    "seconds": 141,
+    "seconds": 78,
     "n_train": 1000000
    }
   },
   "B": {
    "Logistic Regression": {
-    "accuracy": 0.6094070942594675,
-    "macro_f1": 0.2888971418894428,
-    "balanced_accuracy": 0.3091131157074411,
-    "macro_roc_auc_ovr": 0.6651226337247749,
-    "val_accuracy": 0.6260631033532815,
-    "gt15_roc_auc": 0.6974121029446243,
-    "seconds": 23,
+    "accuracy": 0.6092827270762163,
+    "macro_f1": 0.28875443145490065,
+    "balanced_accuracy": 0.3092160095960117,
+    "macro_roc_auc_ovr": 0.6642030863301374,
+    "val_accuracy": 0.6259429455655915,
+    "gt15_roc_auc": 0.696549226461588,
+    "seconds": 17,
     "n_train": 1000000
    },
    "Decision Tree": {
-    "accuracy": 0.6054401759302123,
-    "macro_f1": 0.29196322416865317,
-    "balanced_accuracy": 0.3080868897811058,
-    "macro_roc_auc_ovr": 0.6533779657334826,
-    "val_accuracy": 0.6235573738782831,
-    "gt15_roc_auc": 0.6922752040256921,
-    "seconds": 58,
+    "accuracy": 0.6060363487769079,
+    "macro_f1": 0.2872544599873628,
+    "balanced_accuracy": 0.30395403842929863,
+    "macro_roc_auc_ovr": 0.6531169830747218,
+    "val_accuracy": 0.6239647380853296,
+    "gt15_roc_auc": 0.6919427224834018,
+    "seconds": 39,
     "n_train": 1000000
    },
    "Random Forest": {
-    "accuracy": 0.6116693925452731,
-    "macro_f1": 0.26371429376358224,
-    "balanced_accuracy": 0.2951117708202692,
-    "macro_roc_auc_ovr": 0.6690200844143211,
-    "val_accuracy": 0.6265437345040414,
-    "gt15_roc_auc": 0.7072135210696209,
-    "seconds": 70,
+    "accuracy": 0.6115943774188677,
+    "macro_f1": 0.26172486100690956,
+    "balanced_accuracy": 0.29394651630557345,
+    "macro_roc_auc_ovr": 0.6681608168034879,
+    "val_accuracy": 0.626098271486264,
+    "gt15_roc_auc": 0.706322116891992,
+    "seconds": 36,
     "n_train": 1000000
    },
    "Gradient Boosting (HistGB)": {
-    "accuracy": 0.6173271123420611,
-    "macro_f1": 0.2974380174357538,
-    "balanced_accuracy": 0.31476534246253335,
-    "macro_roc_auc_ovr": 0.6808072900458315,
-    "val_accuracy": 0.6315962229425177,
-    "gt15_roc_auc": 0.7184000713167517,
-    "seconds": 161,
+    "accuracy": 0.616598675983019,
+    "macro_f1": 0.29849316418884797,
+    "balanced_accuracy": 0.315214981627302,
+    "macro_roc_auc_ovr": 0.6812624205513645,
+    "val_accuracy": 0.6316372524309972,
+    "gt15_roc_auc": 0.7181316649762873,
+    "seconds": 87,
     "n_train": 1000000
    }
   }

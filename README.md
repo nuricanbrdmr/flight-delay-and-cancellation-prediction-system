@@ -37,10 +37,10 @@ into `csv/`. Weather is downloaded from Meteostat by the first script. Run from 
 | 1 | `python -I model-api/training/07_fetch_weather.py` | daily station observations per origin airport |
 | 2 | `python -I model-api/training/08_build_dataset.py` | `csv/clean_flights.csv.gz` (de-duplicated, pre-departure fields only, D-1 weather) |
 | 3 | `python -I model-api/training/12_features_v2.py` | history features (self-tested for leakage) |
-| 4 | `python -I model-api/training/15_live_features.py` | Mode-B same-day features (self-tested for leakage) |
+| 4 | `python -I model-api/training/15_live_features.py` | Mode-B same-day features on an absolute (UTC) time axis (self-tested for leakage) |
 | 5 | `python -I model-api/training/13_train_task.py {cancel\|code\|delay\|delayacc} {A\|B}` | ablation, random search on the validation period, final fit (`csv/models_v2/`, `outputs/13_*`) |
 | 6 | `python -I model-api/training/14_test_report.py` | one-shot test evaluation, bootstrap intervals, SHAP, VIF (`outputs/14_*`) |
-| 7 | `python -I model-api/training/18_baselines.py`, `17_extra_figures.py`, `18b_descriptive_figures.py`, `16_make_paper_tables.py` | comparison algorithms, figures, tables (`docs/PAPER_TABLES.md`) |
+| 7 | `python -I model-api/training/19_test_breakdown_calibration.py` (2023 vs 2024-01, Brier score, calibration), `18_baselines.py`, `17_extra_figures.py`, `18b_descriptive_figures.py`, `16_make_paper_tables.py` | comparison algorithms, figures, tables (`docs/PAPER_TABLES.md`) |
 | 8 | `python -I model-api/training/20_export_api_artifacts.py` | exports the Mode-A models and look-up tables used by the API |
 
 Scripts `00`-`06`, `09`, `11` document the data checks (sources, duplicates, class distributions, leakage table, balancing experiment). Random seeds are fixed (42 for XGBoost and SMOTE-NC, 7 for the random search, 0 for subsamples, 123 for the bootstrap).

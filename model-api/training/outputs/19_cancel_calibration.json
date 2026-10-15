@@ -1,0 +1,120 @@
+{
+ "cancel": {
+  "2023-01..2023-08": {
+   "n": 463484,
+   "prevalence": 0.016848478048864687,
+   "mean_predicted": 0.017755836248397827,
+   "brier": 0.015920336554507444,
+   "brier_constant_test_prevalence": 0.01656460683630161,
+   "brier_skill_vs_constant": 0.0388943901996055,
+   "calibration_intercept": 0.016850958499480193,
+   "calibration_slope": 1.0203380397207895,
+   "ece_10_quantile_bins": 0.0012558002165997779
+  },
+  "2024-01": {
+   "n": 582425,
+   "prevalence": 0.037898441859466885,
+   "mean_predicted": 0.03814036026597023,
+   "brier": 0.03506322157559908,
+   "brier_constant_test_prevalence": 0.03646214996409149,
+   "brier_skill_vs_constant": 0.038366590831042546,
+   "calibration_intercept": -0.4943334627655837,
+   "calibration_slope": 0.8145501674349356,
+   "ece_10_quantile_bins": 0.007027786168220125
+  },
+  "all test": {
+   "n": 1045909,
+   "prevalence": 0.028570363196033306,
+   "mean_predicted": 0.029107173904776573,
+   "brier": 0.02658024559861099,
+   "brier_constant_test_prevalence": 0.02775409754288005,
+   "brier_skill_vs_constant": 0.042294725759158935,
+   "calibration_intercept": -0.361750092599732,
+   "calibration_slope": 0.881950796410992,
+   "ece_10_quantile_bins": 0.0026494793882167176
+  },
+  "all test, scheduled dep. >= 06:00 local": {
+   "n": 1014697,
+   "prevalence": 0.028579960323130944,
+   "mean_predicted": 0.02920733578503132,
+   "brier": 0.026629135523106043,
+   "brier_constant_test_prevalence": 0.027763146191059206,
+   "brier_skill_vs_constant": 0.04084589909764469,
+   "calibration_intercept": -0.381336931554341,
+   "calibration_slope": 0.8764244043529922,
+   "ece_10_quantile_bins": 0.0027501028990656717
+  },
+  "isotonic_recalibration_(validation-fitted)": {
+   "brier_test_raw": 0.02658024559861099,
+   "brier_test_recalibrated": 0.02709046775172235,
+   "ece_raw": 0.0026494793882167176,
+   "ece_recalibrated": 0.0051790710499261,
+   "roc_auc_raw": 0.7998974311443249,
+   "roc_auc_recalibrated": 0.7997134565902535
+  },
+  "validation": {
+   "prevalence": 0.02158236339036188,
+   "mean_predicted": 0.02035774476826191,
+   "brier": 0.018641388414503673
+  }
+ },
+ "cancel_B": {
+  "2023-01..2023-08": {
+   "n": 463484,
+   "prevalence": 0.016848478048864687,
+   "mean_predicted": 0.26804807782173157,
+   "brier": 0.09986874727375365,
+   "brier_constant_test_prevalence": 0.01656460683630161,
+   "brier_skill_vs_constant": -5.029044230309749,
+   "calibration_intercept": -3.402034066326697,
+   "calibration_slope": 1.1336443064518091,
+   "ece_10_quantile_bins": 0.25119960428817106
+  },
+  "2024-01": {
+   "n": 582425,
+   "prevalence": 0.037898441859466885,
+   "mean_predicted": 0.38950198888778687,
+   "brier": 0.21014515809027126,
+   "brier_constant_test_prevalence": 0.03646214996409149,
+   "brier_skill_vs_constant": -4.7633781413664735,
+   "calibration_intercept": -3.6591672128996744,
+   "calibration_slope": 1.0780546882265627,
+   "ece_10_quantile_bins": 0.35160356309763957
+  },
+  "all test": {
+   "n": 1045909,
+   "prevalence": 0.028570363196033306,
+   "mean_predicted": 0.33568087220191956,
+   "brier": 0.1612772814481515,
+   "brier_constant_test_prevalence": 0.02775409754288005,
+   "brier_skill_vs_constant": -4.810935887898293,
+   "calibration_intercept": -3.5726721333520275,
+   "calibration_slope": 1.053887144513581,
+   "ece_10_quantile_bins": 0.30711056450793855
+  },
+  "all test, scheduled dep. >= 06:00 local": {
+   "n": 1014697,
+   "prevalence": 0.028579960323130944,
+   "mean_predicted": 0.3361966907978058,
+   "brier": 0.16197398161565663,
+   "brier_constant_test_prevalence": 0.027763146191059206,
+   "brier_skill_vs_constant": -4.834136394376602,
+   "calibration_intercept": -3.581018998963629,
+   "calibration_slope": 1.0536538689762998,
+   "ece_10_quantile_bins": 0.3076167895211155
+  },
+  "isotonic_recalibration_(validation-fitted)": {
+   "brier_test_raw": 0.1612772814481515,
+   "brier_test_recalibrated": 0.025961093688172947,
+   "ece_raw": 0.30711056450793855,
+   "ece_recalibrated": 0.007664789850586799,
+   "roc_auc_raw": 0.8486493372894536,
+   "roc_auc_recalibrated": 0.8483878841513377
+  },
+  "validation": {
+   "prevalence": 0.02158236339036188,
+   "mean_predicted": 0.2682467997074127,
+   "brier": 0.10331282429751926
+  }
+ }
+}
