@@ -1,0 +1,36 @@
+{
+ "config_selected_for_ModeA_applied_to_ModeB_inputs": {
+  "params": {
+   "learning_rate": 0.041,
+   "max_depth": 4,
+   "min_child_weight": 2,
+   "subsample": 0.7963,
+   "colsample_bytree": 0.6862,
+   "reg_lambda": 2.9093,
+   "reg_alpha": 0.5,
+   "gamma": 0.5
+  },
+  "scale_pos_weight": 1.0,
+  "trees": 310,
+  "val_pr_auc": 0.2966767871550024,
+  "test_pr_auc": 0.19536346655578407,
+  "test_roc_auc": 0.857087752874619
+ },
+ "config_selected_for_ModeB": {
+  "params": {
+   "learning_rate": 0.0589,
+   "max_depth": 4,
+   "min_child_weight": 7,
+   "subsample": 0.8717,
+   "colsample_bytree": 0.9019,
+   "reg_lambda": 2.0383,
+   "reg_alpha": 1.0,
+   "gamma": 3.0
+  },
+  "scale_pos_weight": 33.29,
+  "trees": 78,
+  "val_pr_auc": 0.2923822913427506,
+  "test_pr_auc": 0.1800823888316721,
+  "test_roc_auc": 0.8486493372894536
+ }
+}
